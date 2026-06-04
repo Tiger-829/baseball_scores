@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>総合野球スコア管理＆速報システム</title>
+    <title>総合野球スコア管理＆速報システム (長打バグ修正版)</title>
     <style>
         /* 全体・ダークモードデザイン */
         *, *::before, *::after { box-sizing: border-box; }
@@ -11,7 +11,7 @@
         .container { max-width: 600px; margin: 0 auto; padding: 10px; }
         .box { background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         
-        /* 1. アクセス直後のログイン画面 */
+        /* 1. 自動ログイン画面 */
         #login-page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { width: 90%; max-width: 360px; background: #1e1e1e; border: 1px solid #444; border-radius: 12px; padding: 25px; }
         .input-group { margin-bottom: 15px; text-align: left; }
@@ -161,9 +161,9 @@
                 
                 <div class="hit-btn-container">
                     <button class="btn-hit btn-h1" onclick="openDetailsModal('安打', 1)">単打</button>
-                    <button class="btn-hit btn-h2" onclick="openDetailsModal('二塁打', 2)">二塁打</button>
-                    <button class="btn-hit btn-h3" onclick="openDetailsModal('三塁打', 3)">三塁打</button>
-                    <button class="btn-hit btn-h4" onclick="openDetailsModal('本塁打', 4)">本塁打</button>
+                    <button class="btn-hit btn-h2" onclick="openDetailsModal('安打', 2)">二塁打</button>
+                    <button class="btn-hit btn-h3" onclick="openDetailsModal('安打', 3)">三塁打</button>
+                    <button class="btn-hit btn-h4" onclick="openDetailsModal('安打', 4)">本塁打</button>
                 </div>
                 
                 <button class="btn btn-o" onclick="openDetailsModal('凡打', 0)">凡打・アウト詳細入力</button>
@@ -183,7 +183,7 @@
         </div>
 
         <div class="box">
-            <h3>【詳細試合記録タイムライン（スコア清書・分析用）】</h3>
+            <h3>【詳細試合記録タイムライン（スコア清書用）】</h3>
             <div id="log-list" class="log-container">データを読み込んでください。</div>
         </div>
 
@@ -259,12 +259,10 @@
     </div>
 
     <script>
-        // 【強制リフレッシュ】古いデータクラッシュの残骸を一切引きずらない防壁
         try { sessionStorage.clear(); localStorage.clear(); } catch(e){}
 
         const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
 
-        // 試合の状態データ
         let matchState = {
             inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0,
             pitcherName: "田中(投)", pitcherPitches: 0, currentBatterIdx: 0,
@@ -308,7 +306,6 @@
 
         function saveState() { undoStack.push(JSON.stringify(matchState)); }
 
-        // ボール・ストライク進行ロジック
         function pitch(type) {
             saveState();
             matchState.pitcherPitches++;
@@ -338,17 +335,17 @@
             renderUI(); 
         }
 
+        // 【バグ修正】引数として確実に「'安打'」か「'凡打'」を正しく受け取るように統合
         function openDetailsModal(resultCategory, basesCount) {
-            tempHitType = resultCategory; 
-            tempBasesCount = basesCount;  
+            tempHitType = resultCategory; // '安打' or '凡打'
+            tempBasesCount = basesCount;  // 1=単打, 2=二塁打, 3=三塁打, 4=本塁打, 0=凡打
             document.getElementById("details-modal").style.display = "flex";
-            document.getElementById("modal-details-title").innerText = resultCategory + " の詳細を選択";
+            document.getElementById("modal-details-title").innerText = (basesCount > 0 ? "安打" : "凡打") + " の詳細を選択";
             document.getElementById("out-detail-group").style.display = (resultCategory === '凡打') ? "block" : "none";
         }
 
         function closeDetailsModal() { document.getElementById("details-modal").style.display = "none"; }
 
-        // 詳細ポップアップの確定と自動進塁処理
         function commitDetails() {
             saveState();
             const dir = document.getElementById("detail-direction").value;
@@ -358,8 +355,10 @@
 
             let displayResultText = "";
 
+            // 【バグ完全解決】tempHitTypeが確実に '安打' と一致するようになり、長打でも正常進塁します
             if (tempHitType === '安打') {
-                displayResultText = `${dir}への${bType}安打`;
+                let txt = ["", "単打", "二塁打", "三塁打", "本塁打"];
+                displayResultText = `${dir}への${bType}${txt[tempBasesCount]}`;
                 advanceBases(tempBasesCount, true); 
             } else {
                 displayResultText = `${dir}${bType}アウト`;
@@ -397,7 +396,6 @@
             renderUI();
         }
 
-        // 安全進塁リレーロジック（配列上書きバグ完全遮断）
         function advanceBases(count, isHit) {
             let currentRunners = [...matchState.bases];
             matchState.bases = [false, false, false];
@@ -480,9 +478,14 @@
             } catch(e) { alert("同期エラーです。コードを確認してください。"); }
         }
 
-        // 【一元管理】力ずくで画面の全ての文字と色を上書きする絶対命令関数
         function renderUI() {
             try {
+                // イニング進行ボードの非破壊的更新チェック
+                let inningEl = document.getElementById("display-inning");
+                if (inningEl) {
+                    inningEl.innerText = matchState.inning + "回" + (matchState.isTop ? "表" : "裏") + "の攻撃";
+                }
+
                 document.getElementById("b-dots").innerText = "●".repeat(matchState.balls) + "○".repeat(3 - matchState.balls);
                 document.getElementById("s-dots").innerText = "●".repeat(matchState.strikes) + "○".repeat(2 - matchState.strikes);
                 document.getElementById("o-dots").innerText = "●".repeat(matchState.outs) + "○".repeat(2 - matchState.outs);
