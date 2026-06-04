@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【完全復活】総合野球スコア管理＆速報システム</title>
+    <title>【完全修正・自動同期】総合野球スコア管理＆速報システム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
@@ -320,7 +320,9 @@
                     if (data && data.matches) {
                         let savedId = appDb.currentActiveMatchId;
                         appDb = data;
-                        if (savedId && appDb.matches[savedId]) {
+                        
+                        // 管理者、またはすでに手動で試合を切り替えている場合は、その部屋のIDを最優先で維持
+                        if (currentMode === "input" || (savedId && appDb.matches[savedId])) {
                             appDb.currentActiveMatchId = savedId;
                         }
                         renderUI();
@@ -446,7 +448,7 @@
             return lineup[m.currentBatterIdx] || `${m.currentBatterIdx + 1}番打者`; 
         }
 
-        // ★【タイポ完全修正】変数名の最後を「Idx（小文字のx）」に完全に統一し、画面への再描画命令を直結
+        // ★【大文字小文字のタイポを完全修正】：m.currentBatterIdx の末尾のxを100%小文字に直しました
         function nextBatter() { 
             let m = getActiveMatch(); 
             m.currentBatterIdx = (m.currentBatterIdx + 1) % 9; 
