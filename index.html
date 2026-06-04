@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【完全修正・自動同期】プロ仕様野球速報システム</title>
+    <title>【完全修正・自動同期】総合野球スコア速報システム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
@@ -45,7 +45,7 @@
         
         .scorebook-cell { width: 100px; height: 100px; border: 2px solid #444; position: relative; background: #1a1a1a; border-radius: 6px; }
         .diamond-line { position: absolute; width: 50px; height: 50px; border: 1px solid #333; top: 23px; left: 23px; transform: rotate(45deg); }
-        .base { position: absolute; width: 14px; height: 14px; background: #444; border: 1px solid #222; transform: rotate(45deg) ; transition: background 0.2s, transform 0.2s; }
+        .base { position: absolute; width: 14px; height: 14px; background: #444; border: 1px solid #222; transform: rotate(45deg); transition: background 0.2s, transform 0.2s; }
         .b1 { right: 12px; top: 41px; } .b2 { left: 41px; top: 12px; } .b3 { left: 12px; top: 41px; }
         .cell-text { position: absolute; bottom: 38px; width: 100%; text-align: center; font-size: 12px; font-weight: bold; color: #fff; pointer-events: none; }
         .active-base { background: #4caf50 !important; border-color: #fff; transform: rotate(45deg) scale(1.1); }
@@ -257,7 +257,7 @@
 
     <script>
         // ==========================================
-        // 【Firebase設定】あなた専用のRealtime Database用のアドレスです
+        // 【Firebase設定】あなた専用のRealtime Database
         // ==========================================
         const FIREBASE_CONFIG = {
             databaseURL: "https://bb-score-61ff7-default-rtdb.firebaseio.com/" 
@@ -273,7 +273,6 @@
 
         const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
 
-        // 全試合の集中データストア（これ自体がクラウドと完全同期されます）
         let appDb = {
             currentActiveMatchId: "default_match",
             matches: {
@@ -314,7 +313,16 @@
                 dbRef.on("value", (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        appDb = data;
+                        // 【バグ完全根絶ロジック】：自分が新しく作った大切な試合IDの部屋（currentActiveMatchId）を、
+                        // クラウドからの跳ね返りデータ（data）によって勝手に「default_match」へ初期化リセットされるのを防ぐ絶対防壁
+                        let previousId = appDb.currentActiveMatchId; 
+                        
+                        appDb = data; // クラウド最新データを取り込む
+                        
+                        // 管理者、またはすでに手動で試合を切り替えている場合は、その選んでいる部屋のIDを最優先で維持する
+                        if (previousId && appDb.matches[previousId]) {
+                            appDb.currentActiveMatchId = previousId;
+                        }
                         renderUI();
                     }
                 });
@@ -323,7 +331,6 @@
             }
         }
 
-        // 重要：古いmatchState変数を全廃棄し、常に現在選ばれているアクティブな試合の部屋に直結させる
         function getActiveMatch() { 
             return appDb.matches[appDb.currentActiveMatchId]; 
         }
@@ -341,10 +348,9 @@
             else { alert("これ以上戻せません。"); }
         }
 
-        // 【バグ修正】：四球・三振時に現在アクティブな手動登録試合のカウント・打順が100%連動して進むように統合
         function pitch(type) {
             saveState(); 
-            let m = getActiveMatch(); // 今、手動オーダーで作ったアクティブな部屋を直接取得
+            let m = getActiveMatch(); 
             m.pitcherPitches++;
             
             if (type === 'B') {
@@ -354,7 +360,7 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" });
                     advanceBases(1, false); 
                     resetAtBatCount(); 
-                    nextBatter(); // 四球のときに手動オーダー打順を次のバッターへ進める命令
+                    nextBatter(); 
                 }
             } else if (type === 'S') {
                 m.strikes++; m.lastEvent = "ストライク";
@@ -363,7 +369,7 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" });
                     m.outs++; 
                     resetAtBatCount(); 
-                    nextBatter(); // 三振のときに手動オーダー打順を次のバッターへ進める命令
+                    nextBatter(); 
                     checkInningChange();
                 }
             } else if (type === 'F') {
@@ -419,7 +425,7 @@
             else {
                 if (!currentRunners[0]) { m.bases[0] = true; m.bases[1] = currentRunners[1]; m.bases[2] = currentRunners[2]; }
                 else if (!currentRunners[1]) { m.bases[0] = true; m.bases[1] = true; m.bases[2] = currentRunners[2]; }
-                else if (!currentRunners[2]) { m.bases[0] = true; m.bases[1] = true; m.bases[2] = true; }
+                else if (!currentRunners[2]) { m.bases[0] = true; m.bases[1] = true; m.bases[2] = true; addRun(); }
                 else { m.bases[0] = true; m.bases[1] = true; m.bases[2] = true; addRun(); }
             }
         }
@@ -470,7 +476,6 @@
         function openNewMatchModal() { document.getElementById("new-match-modal").style.display = "flex"; updateFormLabels(); }
         function closeNewMatchModal() { document.getElementById("new-match-modal").style.display = "none"; }
 
-        // 【バグ修正】：入力された手動打順を確実に新規作成試合のオブジェクト配列へ100%パッキング格納
         function commitNewMatch() {
             saveState();
             const matchId = document.getElementById("form-match-id").value.trim() || "無題の試合";
@@ -483,7 +488,6 @@
                 hLineup.push(document.getElementById(`input-h-p${i}`).value.trim());
             }
             
-            // クラウドDBの試合コレクションに新しく独立した部屋を切り出す
             appDb.matches[matchId] = {
                 matchId: matchId, status: "進行中", vTeam: vTeam, hTeam: hTeam,
                 inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0, pitcherName: "投手名", pitcherPitches: 0, currentBatterIdx: 0,
@@ -492,7 +496,7 @@
             };
             appDb.currentActiveMatchId = matchId; 
             closeNewMatchModal(); 
-            pushToCloud(); // 作成した瞬間にクラウド黒板へ一斉同期
+            pushToCloud(); 
             renderUI();
             alert(`試合 [${matchId}] を手動オーダー表から新規作成しました！`);
         }
@@ -543,7 +547,6 @@
             } catch(e) { alert("同期エラー。コードを確認してください。"); }
         }
 
-        // 【完全版】：手動登録された各部屋のオーダー表と、S/B進行による打席移動を100%狂いなく画面描写する
         function renderUI() {
             try {
                 let m = getActiveMatch(); if (!m) return;
@@ -571,7 +574,6 @@
                 const currentLineup = m.isTop ? m.vLineup : m.hLineup;
                 document.getElementById("info-pitcher").innerText = `${m.pitcherName} (${m.pitcherPitches}球)`;
                 
-                // ★【バグ修正画面反映】現在の手動打席名（例：1番 鈴木 など）を狂いなくインフォメーションボードに投影
                 document.getElementById("info-batter").innerText = `${m.currentBatterIdx + 1}番: ${currentLineup[m.currentBatterIdx] || "未登録"}`;
 
                 let logHTML = "";
@@ -584,7 +586,6 @@
                 }
                 document.getElementById("log-list").innerHTML = logHTML;
 
-                // 打線オーダーリストの動的ハイライト更新
                 renderLineupList("v-lineup-list", m.vLineup, m.isTop); 
                 renderLineupList("h-lineup-list", m.hLineup, !m.isTop);
 
@@ -601,7 +602,6 @@
         function renderLineupList(elementId, lineupArray, isAttackingTeam) {
             let html = ""; let m = getActiveMatch();
             lineupArray.forEach((player, idx) => {
-                // 現在のバッターの行に「current-batter-active」クラスを付与して緑色に光らせるロジック
                 let isActive = (isAttackingTeam && idx === m.currentBatterIdx) ? "current-batter-active" : "";
                 html += `<div class="player-row ${isActive}"><span>${idx+1}番: ${player}</span></div>`;
             });
