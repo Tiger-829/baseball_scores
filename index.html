@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【真・バグ根絶版】総合野球スコア管理＆速報システム</title>
+    <title>【完全復活】総合野球スコア管理＆速報システム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
@@ -83,6 +83,7 @@
 </head>
 <body>
 
+    <!-- 1. 自動ログイン画面 -->
     <div id="login-page">
         <div class="login-box">
             <h2 style="margin-top:0; color:#4caf50;">TEAM LOGIN</h2>
@@ -98,6 +99,7 @@
         </div>
     </div>
 
+    <!-- 2. モード選択画面 -->
     <div id="mode-page" class="container">
         <div class="box">
             <h2>ログイン成功</h2>
@@ -107,17 +109,21 @@
         </div>
     </div>
 
+    <!-- 3. 本番アプリケーション速報画面 -->
     <div id="main-app" class="container">
         <h1 id="app-title">ベースボール速報</h1>
 
+        <!-- 試合選択メニュー -->
         <div class="box" id="match-select-box" style="padding:10px; background:#1a2421; border-color:#2e7d32;">
             <div class="input-group" style="margin-bottom:0;">
                 <label style="color:#4caf50;">👁 クラウド上の試合を切り替え表示（自動更新）</label>
                 <select id="app-match-selector" onchange="onMatchSelectionChange()">
-                    </select>
+                    <option value="default_match">進行中の試合 (デフォルト部屋)</option>
+                </select>
             </div>
         </div>
 
+        <!-- ランニングスコアボード -->
         <div class="box" style="padding: 5px;">
             <table class="score-table">
                 <thead>
@@ -138,11 +144,13 @@
             </table>
         </div>
 
+        <!-- 最新の対戦インフォメーション -->
         <div class="match-info-grid">
             <div class="match-info-item"><span class="match-info-label">投手（守備球数）</span><span class="match-info-value" id="info-pitcher">-- (0球)</span></div>
             <div class="match-info-item"><span class="match-info-label">現在の下席（打順）</span><span class="match-info-value" id="info-batter">-- (1番)</span></div>
         </div>
 
+        <!-- BSO ＆ 頂点点灯式ダイヤモンド -->
         <div class="box" style="padding:10px;">
             <div class="live-status-layout">
                 <div class="count-indicator">
@@ -160,6 +168,7 @@
             </div>
         </div>
 
+        <!-- 入力管理者用操作パネル -->
         <div id="input-controls" class="box">
             <h3 style="margin-top:0; color:#ffd700;">【管理者操作パネル】</h3>
             
@@ -190,17 +199,20 @@
             <p style="color:#a0ff00; font-size:11px; margin-top:10px; font-weight:bold;">✓ クラウド自動同期が有効です。コピペの必要はありません。</p>
         </div>
 
+        <!-- 詳細タイムラインログ -->
         <div class="box">
             <h3>【スコア清書用・詳細記録タイムライン】</h3>
-            <div id="log-list" class="log-container">クラウドから試合データを読み込んでいます...</div>
+            <div id="log-list" class="log-container">打席記録はまだありません。</div>
         </div>
 
+        <!-- オーダー表 -->
         <div class="lineup-layout">
             <div class="lineup-box"><div class="lineup-title" id="v-team-label">先攻・打線</div><div id="v-lineup-list"></div></div>
             <div class="lineup-box"><div class="lineup-title" id="h-team-label">後攻・打線</div><div id="h-lineup-list"></div></div>
         </div>
     </div>
 
+    <!-- 新規試合＆手動オーダー登録モーダル -->
     <div id="new-match-modal" class="modal-mask">
         <div class="modal-content-scroller">
             <h3 style="margin-top:0; color:#4caf50;">新規試合 ＆ オーダー手動登録</h3>
@@ -213,6 +225,7 @@
         </div>
     </div>
 
+    <!-- 打撃詳細入力ポップアップモーダル -->
     <div id="details-modal" class="modal-mask">
         <div class="modal-content-scroller" style="background:#252525;">
             <h3 id="modal-details-title" style="margin-top:0; color:#4caf50;">打撃詳細記録</h3>
@@ -242,6 +255,7 @@
         </div>
     </div>
 
+    <!-- 選手交代・走者微調整メニュー -->
     <div id="change-modal" class="modal-mask">
         <div class="login-box" style="background:#252525;">
             <h3 style="margin-top:0; color:#9c27b0;">選手交代・走者微調整</h3>
@@ -257,7 +271,8 @@
 
     <script>
         // ==========================================
-        // 【Firebase設定】Realtime Database用のアドレス
+        // 【Firebase設定の安全隔離壁】
+        // URLが間違っていても、アプリ全体が決してフリーズしないように完全に包み込みました
         // ==========================================
         const FIREBASE_CONFIG = {
             databaseURL: "https://bb-score-61ff7-default-rtdb.firebaseio.com/" 
@@ -265,14 +280,18 @@
 
         let dbRef = null;
         try {
-            firebase.initializeApp(FIREBASE_CONFIG);
-            dbRef = firebase.database().ref("baseball_app_db");
+            // もし「console.firebase」のURLが混入していても、ここでエラーを検知して遮断し、画面を殺さない
+            if (FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.databaseURL.indexOf("firebaseio.com") !== -1) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+                dbRef = firebase.database().ref("baseball_app_db");
+            }
         } catch (firebaseError) {
-            console.log("Firebase接続保留:", firebaseError);
+            console.error("Firebaseの初期化を安全にスキップしました（ローカル動作へ移行）:", firebaseError);
         }
 
         const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
 
+        // スタート時の初期データ構造
         let appDb = {
             currentActiveMatchId: "default_match",
             matches: {
@@ -304,25 +323,23 @@
             document.getElementById("main-app").style.display = "block";
             
             if (mode === "input") {
-                document.getElementById("app-title").innerText = "ベースボール速報【クラウド管理者画面】";
+                document.getElementById("app-title").innerText = "ベースボール速報【管理者パネル】";
                 document.getElementById("input-controls").style.display = "block";
                 buildOrderFormInputs();
             } else {
-                document.getElementById("app-title").innerText = "ベースボール速報【リアルタイム自動速報板】";
+                document.getElementById("app-title").innerText = "ベースボール速報【一般・保護者閲覧用】";
                 document.getElementById("input-controls").style.display = "none";
             }
             
+            // クラウドからデータを受信する処理
             if (dbRef) {
                 dbRef.on("value", (snapshot) => {
                     const data = snapshot.val();
-                    if (data) {
-                        // 【バグ根絶ロジック】：管理者が操作中の場合、クラウドの古い状態IDによって部屋が勝手に初期化されるのを完璧に防御
-                        let savedCurrentId = appDb.currentActiveMatchId;
-                        
+                    if (data && data.matches) {
+                        let savedId = appDb.currentActiveMatchId;
                         appDb = data;
-                        
-                        if (currentMode === "input" || (savedCurrentId && appDb.matches[savedCurrentId])) {
-                            appDb.currentActiveMatchId = savedCurrentId;
+                        if (savedId && appDb.matches[savedId]) {
+                            appDb.currentActiveMatchId = savedId;
                         }
                         renderUI();
                     }
@@ -349,6 +366,7 @@
             else { alert("これ以上戻せません。"); }
         }
 
+        // ボール、ストライク、ファウルの進行ロジック
         function pitch(type) {
             saveState(); 
             let m = getActiveMatch(); 
@@ -361,7 +379,7 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" });
                     advanceBases(1, false); 
                     resetAtBatCount(); 
-                    nextBatter(); // ★打順を次に進める関数を実行
+                    nextBatter(); // ★打者を次に進める命令
                 }
             } else if (type === 'S') {
                 m.strikes++; m.lastEvent = "ストライク";
@@ -370,14 +388,14 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" });
                     m.outs++; 
                     resetAtBatCount(); 
-                    nextBatter(); // ★打順を次に進める関数を実行
+                    nextBatter(); // ★打者を次に進める命令
                     checkInningChange();
                 }
             } else if (type === 'F') {
                 m.lastEvent = "ファウル"; if (m.strikes < 2) { m.strikes++; }
             }
             pushToCloud(); 
-            renderUI(); // ★明示的にここで即座に画面更新命令を実行
+            renderUI(); // ★ボタンを押した瞬間に、1ミリ秒の遅延もなく表示を書き換える
         }
 
         function openDetailsModal(resultCategory, basesCount) {
@@ -447,7 +465,7 @@
             return lineup[m.currentBatterIdx] || `${m.currentBatterIdx + 1}番打者`; 
         }
 
-        // 【バグ修正点①】：打順配列の要素を次に進めると同時に、必ず画面の再描写命令（renderUI）を関数内にガチガチに直結
+        // 打順を進めるための独立関数（進めた瞬間に画面を強制的に書き換える）
         function nextBatter() { 
             let m = getActiveMatch(); 
             m.currentBatterIdx = (m.currentBatterIdx + 1) % 9; 
@@ -546,19 +564,7 @@
             closeChangeModal(); pushToCloud(); renderUI();
         }
 
-        function syncViewData() {
-            try {
-                const code = document.getElementById("input-code").value.trim(); if(!code) return;
-                let parsedDb = JSON.parse(code);
-                appDb = parsedDb; 
-                if (appDb.currentActiveMatchId && appDb.matches[appDb.currentActiveMatchId]) {
-                    appDb.currentActiveMatchId = parsedDb.currentActiveMatchId;
-                }
-                renderUI();
-                alert("最新のスコアデータを完全に読み込み、現在の試合画面へ自動切り替えしました！");
-            } catch(e) { alert("同期エラー。コードを確認してください。"); }
-        }
-
+        // 画面の全ての文字・ランプを力ずくで書き換える絶対レンダリング関数
         function renderUI() {
             try {
                 let m = getActiveMatch(); if (!m) return;
@@ -586,7 +592,7 @@
                 const currentLineup = m.isTop ? m.vLineup : m.hLineup;
                 document.getElementById("info-pitcher").innerText = `${m.pitcherName} (${m.pitcherPitches}球)`;
                 
-                // 【バグ修正点②】：現在アクティブな試合空間（m）の打者インデックスを確実にDOM上へ100%射出して常時リアルタイム同期
+                // ★現在のアクティブなバッター（手動登録された名前）を確実に表示板に反映
                 document.getElementById("info-batter").innerText = `${m.currentBatterIdx + 1}番: ${currentLineup[m.currentBatterIdx] || "未登録"}`;
 
                 let logHTML = "";
@@ -602,6 +608,7 @@
                 renderLineupList("v-lineup-list", m.vLineup, m.isTop); 
                 renderLineupList("h-lineup-list", m.hLineup, !m.isTop);
 
+                // 全試合リストメニューの再組み立て
                 let selectorHTML = "";
                 Object.keys(appDb.matches).forEach(key => {
                     let matchItem = appDb.matches[key]; let isCurrent = (key === appDb.currentActiveMatchId) ? " (表示中)" : "";
