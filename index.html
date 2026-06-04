@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>総合野球スコア管理＆速報システム</title>
+    <title>【真・バグ完全根絶版】総合野球スコア管理＆速報システム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
@@ -83,6 +83,7 @@
 </head>
 <body>
 
+    <!-- 1. 自動ログイン画面 -->
     <div id="login-page">
         <div class="login-box">
             <h2 style="margin-top:0; color:#4caf50;">TEAM LOGIN</h2>
@@ -98,6 +99,7 @@
         </div>
     </div>
 
+    <!-- 2. モード選択画面 -->
     <div id="mode-page" class="container">
         <div class="box">
             <h2>ログイン成功</h2>
@@ -107,17 +109,21 @@
         </div>
     </div>
 
+    <!-- 3. 本番アプリケーション速報画面 -->
     <div id="main-app" class="container">
         <h1 id="app-title">ベースボール速報</h1>
 
+        <!-- 試合選択メニュー -->
         <div class="box" id="match-select-box" style="padding:10px; background:#1a2421; border-color:#2e7d32;">
             <div class="input-group" style="margin-bottom:0;">
                 <label style="color:#4caf50;">👁 クラウド上の試合を切り替え表示（自動更新）</label>
                 <select id="app-match-selector" onchange="onMatchSelectionChange()">
-                    </select>
+                    <!-- クラウドから自動展開されます -->
+                </select>
             </div>
         </div>
 
+        <!-- ランニングスコアボード -->
         <div class="box" style="padding: 5px;">
             <table class="score-table">
                 <thead>
@@ -138,11 +144,13 @@
             </table>
         </div>
 
+        <!-- 最新の対戦インフォメーション -->
         <div class="match-info-grid">
             <div class="match-info-item"><span class="match-info-label">投手（守備球数）</span><span class="match-info-value" id="info-pitcher">-- (0球)</span></div>
             <div class="match-info-item"><span class="match-info-label">現在の下席（打順）</span><span class="match-info-value" id="info-batter">-- (1番)</span></div>
         </div>
 
+        <!-- BSO ＆ 頂点点灯式ダイヤモンド -->
         <div class="box" style="padding:10px;">
             <div class="live-status-layout">
                 <div class="count-indicator">
@@ -160,6 +168,7 @@
             </div>
         </div>
 
+        <!-- 入力管理者用操作パネル -->
         <div id="input-controls" class="box">
             <h3 style="margin-top:0; color:#ffd700;">【管理者操作パネル】</h3>
             
@@ -190,17 +199,20 @@
             <p style="color:#a0ff00; font-size:11px; margin-top:10px; font-weight:bold;">✓ クラウド自動同期が有効です。コピペの必要はありません。</p>
         </div>
 
+        <!-- 詳細タイムラインログ -->
         <div class="box">
             <h3>【スコア清書用・詳細記録タイムライン】</h3>
             <div id="log-list" class="log-container">クラウドから試合データを読み込んでいます...</div>
         </div>
 
+        <!-- オーダー表 -->
         <div class="lineup-layout">
             <div class="lineup-box"><div class="lineup-title" id="v-team-label">先攻・打線</div><div id="v-lineup-list"></div></div>
             <div class="lineup-box"><div class="lineup-title" id="h-team-label">後攻・打線</div><div id="h-lineup-list"></div></div>
         </div>
     </div>
 
+    <!-- 新規試合＆手動オーダー登録モーダル -->
     <div id="new-match-modal" class="modal-mask">
         <div class="modal-content-scroller">
             <h3 style="margin-top:0; color:#4caf50;">新規試合 ＆ オーダー手動登録</h3>
@@ -213,6 +225,7 @@
         </div>
     </div>
 
+    <!-- 打撃詳細入力ポップアップモーダル -->
     <div id="details-modal" class="modal-mask">
         <div class="modal-content-scroller" style="background:#252525;">
             <h3 id="modal-details-title" style="margin-top:0; color:#4caf50;">打撃詳細記録</h3>
@@ -242,6 +255,7 @@
         </div>
     </div>
 
+    <!-- 選手交代・走者微調整メニュー -->
     <div id="change-modal" class="modal-mask">
         <div class="login-box" style="background:#252525;">
             <h3 style="margin-top:0; color:#9c27b0;">選手交代・走者微調整</h3>
@@ -301,7 +315,7 @@
         }
 
         function startApp(mode) {
-            currentMode = mode; // ★ここで管理者(input)か一般(view)の権限がガチガチにセットされる
+            currentMode = mode; 
             document.getElementById("mode-page").style.display = "none"; 
             document.getElementById("main-app").style.display = "block";
             
@@ -319,10 +333,10 @@
                     const data = snapshot.val();
                     if (data && data.matches) {
                         let savedId = appDb.currentActiveMatchId;
-                        let savedMode = currentMode; // ★【最重要防壁】：クラウドからデータを受信する直前に、自分の絶対的な操作権限を一時退避
+                        let savedMode = currentMode;
                         
                         appDb = data;
-                        currentMode = savedMode; // ★【権限ロック】：クラウドの古いデータに上書きされてviewモードに落とされるのを100%遮断！
+                        currentMode = savedMode;
                         
                         if (currentMode === "input" || (savedId && appDb.matches[savedId])) {
                             appDb.currentActiveMatchId = savedId;
@@ -335,14 +349,9 @@
             }
         }
 
-        function getActiveMatch() { 
-            return appDb.matches[appDb.currentActiveMatchId]; 
-        }
-        
         function saveState() { undoStack.push(JSON.stringify(appDb)); }
         
         function pushToCloud() {
-            // ★【権限バグ修正】：currentModeが絶対に"input"のままでロックされているため、今度は確実にクラウドへデータが送信されます
             if (currentMode === "input" && dbRef) {
                 dbRef.set(appDb);
             }
@@ -353,32 +362,55 @@
             else { alert("これ以上戻せません。"); }
         }
 
+        // ★【核心修正】：全てのショートカット変数を廃止し、大元の『appDb.matches[id]』のメモリ空間に直接計算を叩き込む強固なインライン構造
         function pitch(type) {
             saveState(); 
-            let m = getActiveMatch(); 
-            m.pitcherPitches++;
+            let id = appDb.currentActiveMatchId;
+            appDb.matches[id].pitcherPitches++;
             
             if (type === 'B') {
-                m.balls++; m.lastEvent = "ボール";
-                if (m.balls === 4) {
-                    m.lastEvent = "四球";
-                    m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(m), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" });
-                    advanceBases(m, 1, false); 
-                    resetAtBatCount(m); 
-                    nextBatter(m); 
+                appDb.matches[id].balls++; 
+                appDb.matches[id].lastEvent = "ボール";
+                
+                if (appDb.matches[id].balls === 4) {
+                    appDb.matches[id].lastEvent = "四球";
+                    appDb.matches[id].history.push({ 
+                        inning: appDb.matches[id].inning, isTop: appDb.matches[id].isTop, 
+                        batter: getCurrentBatterNameDirect(), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" 
+                    });
+                    advanceBasesDirect(1, false); 
+                    
+                    // 関数のコピーバグを完全に防ぐため、この場で大元のカウントデータを強制ゼロリセット（インライン展開）
+                    appDb.matches[id].balls = 0; 
+                    appDb.matches[id].strikes = 0;
+                    
+                    // 打順ポインタを次の部屋へ直接1進める絶対命令
+                    appDb.matches[id].currentBatterIdx = (appDb.matches[id].currentBatterIdx + 1) % 9;
                 }
             } else if (type === 'S') {
-                m.strikes++; m.lastEvent = "ストライク";
-                if (m.strikes === 3) {
-                    m.lastEvent = "三振";
-                    m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(m), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" });
-                    m.outs++; 
-                    resetAtBatCount(m); 
-                    nextBatter(m); 
-                    checkInningChange(m);
+                appDb.matches[id].strikes++; 
+                appDb.matches[id].lastEvent = "ストライク";
+                
+                if (appDb.matches[id].strikes === 3) {
+                    appDb.matches[id].lastEvent = "三振";
+                    appDb.matches[id].history.push({ 
+                        inning: appDb.matches[id].inning, isTop: appDb.matches[id].isTop, 
+                        batter: getCurrentBatterNameDirect(), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" 
+                    });
+                    appDb.matches[id].outs++; 
+                    
+                    // 関数のコピーバグを完全に防ぐため、この場で大元のカウントデータを強制ゼロリセット（インライン展開）
+                    appDb.matches[id].balls = 0; 
+                    appDb.matches[id].strikes = 0;
+                    
+                    // 打順ポインタを次の部屋へ直接1進める絶対命令
+                    appDb.matches[id].currentBatterIdx = (appDb.matches[id].currentBatterIdx + 1) % 9;
+                    
+                    checkInningChangeDirect();
                 }
             } else if (type === 'F') {
-                m.lastEvent = "ファウル"; if (m.strikes < 2) { m.strikes++; }
+                appDb.matches[id].lastEvent = "ファウル"; 
+                if (appDb.matches[id].strikes < 2) { appDb.matches[id].strikes++; }
             }
             pushToCloud(); 
             renderUI(); 
@@ -392,92 +424,103 @@
         function closeDetailsModal() { document.getElementById("details-modal").style.display = "none"; }
 
         function commitDetails() {
-            saveState(); let m = getActiveMatch();
+            saveState(); 
+            let id = appDb.currentActiveMatchId;
             const dir = document.getElementById("detail-direction").value;
             const bType = document.getElementById("detail-type").value;
             const outKind = document.getElementById("detail-out-kind").value;
-            const currentBatter = getCurrentBatterName(m);
+            const currentBatter = getCurrentBatterNameDirect();
             let displayResultText = "";
 
             if (tempHitType === '安打') {
                 let txt = ["", "単打", "二塁打", "三塁打", "本塁打"];
                 displayResultText = `${dir}への${bType}${txt[tempBasesCount]}`;
-                advanceBases(m, tempBasesCount, true); 
+                advanceBasesDirect(tempBasesCount, true); 
             } else {
                 displayResultText = `${dir}${bType}アウト`;
-                if (outKind === "通常アウト") { m.outs++; } 
-                else if (outKind === "二塁封殺") { m.outs++; m.bases[0] = false; displayResultText += " (二塁封殺)"; } 
-                else if (outKind === "三塁封殺") { m.outs++; m.bases[1] = false; } 
-                else if (outKind === "本塁封殺") { m.outs++; m.bases[2] = false; } 
-                else if (outKind === "ダブルプレー") { m.outs += 2; m.bases[0] = false; displayResultText += " (併殺打)"; }
+                if (outKind === "通常アウト") { appDb.matches[id].outs++; } 
+                else if (outKind === "二塁封殺") { appDb.matches[id].outs++; appDb.matches[id].bases[0] = false; displayResultText += " (二塁封殺)"; } 
+                else if (outKind === "三塁封殺") { appDb.matches[id].outs++; appDb.matches[id].bases[1] = false; } 
+                else if (outKind === "本塁封殺") { appDb.matches[id].outs++; appDb.matches[id].bases[2] = false; } 
+                else if (outKind === "ダブルプレー") { appDb.matches[id].outs += 2; appDb.matches[id].bases[0] = false; displayResultText += " (併殺打)"; }
             }
 
-            m.lastEvent = displayResultText;
-            m.history.push({ inning: m.inning, isTop: m.isTop, batter: currentBatter, res: tempHitType === '安打' ? "安打(" + tempBasesCount + "塁打)" : "凡打", dir: dir, type: bType, outKind: tempHitType === '安打' ? "安全進塁" : outKind });
+            appDb.matches[id].lastEvent = displayResultText;
+            appDb.matches[id].history.push({ inning: appDb.matches[id].inning, isTop: appDb.matches[id].isTop, batter: currentBatter, res: tempHitType === '安打' ? "安打(" + tempBasesCount + "塁打)" : "凡打", dir: dir, type: bType, outKind: tempHitType === '安打' ? "安全進塁" : outKind });
 
-            resetAtBatCount(m); 
-            nextBatter(m); 
+            appDb.matches[id].balls = 0; 
+            appDb.matches[id].strikes = 0;
+            appDb.matches[id].currentBatterIdx = (appDb.matches[id].currentBatterIdx + 1) % 9;
+
             closeDetailsModal(); 
-            checkInningChange(m);
+            checkInningChangeDirect();
             pushToCloud(); 
             renderUI();
         }
 
-        function advanceBases(targetMatch, count, isHit) {
-            let currentRunners = [...targetMatch.bases]; targetMatch.bases = [false, false, false];
+        // 絶対参照による進塁ロジック
+        function advanceBasesDirect(count, isHit) {
+            let id = appDb.currentActiveMatchId;
+            let currentRunners = [...appDb.matches[id].bases]; 
+            appDb.matches[id].bases = [false, false, false];
+            
             for (let i = 2; i >= 0; i--) {
                 if (currentRunners[i]) {
                     let newPos = i + count;
-                    if (newPos >= 3) { addRun(targetMatch); } else { targetMatch.bases[newPos] = true; }
+                    if (newPos >= 3) { addRunDirect(); } else { appDb.matches[id].bases[newPos] = true; }
                 }
             }
-            if (isHit) { if (count === 4) { addRun(targetMatch); } else { targetMatch.bases[count - 1] = true; } }
-            else {
-                if (!currentRunners[0]) { targetMatch.bases[0] = true; targetMatch.bases[1] = currentRunners[1]; targetMatch.bases[2] = currentRunners[2]; }
-                else if (!currentRunners[1]) { targetMatch.bases[0] = true; targetMatch.bases[1] = true; targetMatch.bases[2] = currentRunners[2]; }
-                else if (!currentRunners[2]) { targetMatch.bases[0] = true; targetMatch.bases[1] = true; targetMatch.bases[2] = true; addRun(targetMatch); }
-                else { targetMatch.bases[0] = true; targetMatch.bases[1] = true; targetMatch.bases[2] = true; addRun(targetMatch); }
+            if (isHit) { 
+                if (count === 4) { addRunDirect(); } else { appDb.matches[id].bases[count - 1] = true; } 
+            } else {
+                if (!currentRunners[0]) { appDb.matches[id].bases[0] = true; appDb.matches[id].bases[1] = currentRunners[1]; appDb.matches[id].bases[2] = currentRunners[2]; }
+                else if (!currentRunners[1]) { appDb.matches[id].bases[0] = true; appDb.matches[id].bases[1] = true; appDb.matches[id].bases[2] = currentRunners[2]; }
+                else if (!currentRunners[2]) { appDb.matches[id].bases[0] = true; appDb.matches[id].bases[1] = true; appDb.matches[id].bases[2] = true; addRunDirect(); }
+                else { appDb.matches[id].bases[0] = true; appDb.matches[id].bases[1] = true; appDb.matches[id].bases[2] = true; addRunDirect(); }
             }
         }
 
-        function addRun(targetMatch) {
-            let idx = targetMatch.inning - 1;
-            if (targetMatch.isTop) { targetMatch.vScore[idx] = (targetMatch.vScore[idx] || 0) + 1; } else { targetMatch.hScore[idx] = (targetMatch.hScore[idx] || 0) + 1; }
-        }
-
-        function getCurrentBatterName(targetMatch) { 
-            const lineup = targetMatch.isTop ? targetMatch.vLineup : targetMatch.hLineup; 
-            return lineup[targetMatch.currentBatterIdx] || `${targetMatch.currentBatterIdx + 1}番打者`; 
-        }
-
-        function nextBatter(targetMatch) { 
-            if (targetMatch && targetMatch.currentBatterIdx !== undefined) {
-                targetMatch.currentBatterIdx = (targetMatch.currentBatterIdx + 1) % 9; 
+        function addRunDirect() {
+            let id = appDb.currentActiveMatchId;
+            let idx = appDb.matches[id].inning - 1;
+            if (appDb.matches[id].isTop) { 
+                appDb.matches[id].vScore[idx] = (appDb.matches[id].vScore[idx] || 0) + 1; 
+            } else { 
+                appDb.matches[id].hScore[idx] = (appDb.matches[id].hScore[idx] || 0) + 1; 
             }
-            renderUI();
         }
 
-        function resetAtBatCount(targetMatch) { 
-            if (targetMatch) {
-                targetMatch.balls = 0; 
-                targetMatch.strikes = 0; 
-            }
-            renderUI();
+        function getCurrentBatterNameDirect() { 
+            let id = appDb.currentActiveMatchId;
+            const lineup = appDb.matches[id].isTop ? appDb.matches[id].vLineup : appDb.matches[id].hLineup; 
+            return lineup[appDb.matches[id].currentBatterIdx] || `${appDb.matches[id].currentBatterIdx + 1}番打者`; 
         }
 
         function resetAtBatCountBtn() {
-            let m = getActiveMatch();
-            resetAtBatCount(m);
+            let id = appDb.currentActiveMatchId;
+            appDb.matches[id].balls = 0;
+            appDb.matches[id].strikes = 0;
             pushToCloud();
+            renderUI();
         }
 
-        function checkInningChange(targetMatch) {
-            if (targetMatch.outs >= 3) {
+        function checkInningChangeDirect() {
+            let id = appDb.currentActiveMatchId;
+            if (appDb.matches[id].outs >= 3) {
                 alert("3アウトチェンジ！");
-                targetMatch.outs = 0; targetMatch.bases = [false, false, false]; 
-                targetMatch.balls = 0; targetMatch.strikes = 0;
-                if (targetMatch.isTop) { targetMatch.isTop = false; targetMatch.hScore[targetMatch.inning - 1] = 0; }
-                else { targetMatch.isTop = true; targetMatch.inning++; if (targetMatch.inning <= 9) { targetMatch.vScore[targetMatch.inning - 1] = 0; } }
+                appDb.matches[id].outs = 0; 
+                appDb.matches[id].bases = [false, false, false]; 
+                appDb.matches[id].balls = 0; 
+                appDb.matches[id].strikes = 0;
+                
+                if (appDb.matches[id].isTop) { 
+                    appDb.matches[id].isTop = false; 
+                    appDb.matches[id].hScore[appDb.matches[id].inning - 1] = 0; 
+                } else { 
+                    appDb.matches[id].isTop = true; 
+                    appDb.matches[id].inning++; 
+                    if (appDb.matches[id].inning <= 9) { appDb.matches[id].vScore[appDb.matches[id].inning - 1] = 0; } 
+                }
                 renderUI();
             }
         }
@@ -526,8 +569,9 @@
         }
 
         function toggleMatchStatus() {
-            saveState(); let m = getActiveMatch();
-            if (m.status === "進行中") { m.status = "更新終了"; } else { m.status = "進行中"; }
+            saveState(); 
+            let id = appDb.currentActiveMatchId;
+            if (appDb.matches[id].status === "進行中") { appDb.matches[id].status = "更新終了"; } else { appDb.matches[id].status = "進行中"; }
             pushToCloud(); renderUI();
         }
 
@@ -550,30 +594,25 @@
         }
 
         function executeChange() {
-            saveState(); let m = getActiveMatch();
+            saveState(); 
+            let id = appDb.currentActiveMatchId;
             const role = document.getElementById("change-role").value; const name = document.getElementById("change-name").value || "交代選手"; const target = parseInt(document.getElementById("change-target").value);
-            if (role === 'pitcher') { m.pitcherName = name; m.pitcherPitches = 0; }
-            else if (role === 'batter') { let lineup = m.isTop ? m.vLineup : m.hLineup; lineup[m.currentBatterIdx] = name; }
-            else if (role === 'runner_on') { m.bases[target] = true; } else if (role === 'runner_off') { m.bases[target] = false; }
+            if (role === 'pitcher') { appDb.matches[id].pitcherName = name; appDb.matches[id].pitcherPitches = 0; }
+            else if (role === 'batter') { 
+                let lineup = appDb.matches[id].isTop ? appDb.matches[id].vLineup : appDb.matches[id].hLineup; 
+                lineup[appDb.matches[id].currentBatterIdx] = name; 
+            }
+            else if (role === 'runner_on') { appDb.matches[id].bases[target] = true; } 
+            else if (role === 'runner_off') { appDb.matches[id].bases[target] = false; }
             closeChangeModal(); pushToCloud(); renderUI();
-        }
-
-        function syncViewData() {
-            try {
-                const code = document.getElementById("input-code").value.trim(); if(!code) return;
-                let parsedDb = JSON.parse(code);
-                appDb = parsedDb; 
-                if (appDb.currentActiveMatchId && appDb.matches[appDb.currentActiveMatchId]) {
-                    appDb.currentActiveMatchId = parsedDb.currentActiveMatchId;
-                }
-                renderUI();
-                alert("最新のスコアデータを完全に読み込み、現在の試合画面へ自動切り替えしました！");
-            } catch(e) { alert("同期エラー。コードを確認してください。"); }
         }
 
         function renderUI() {
             try {
-                let m = getActiveMatch(); if (!m) return;
+                let id = appDb.currentActiveMatchId;
+                let m = appDb.matches[id];
+                if (!m) return;
+                
                 document.getElementById("board-v-name").innerText = m.vTeam; document.getElementById("board-h-name").innerText = m.hTeam;
                 document.getElementById("v-team-label").innerText = `${m.vTeam}・打線`; document.getElementById("h-team-label").innerText = `${m.hTeam}・打線`;
 
@@ -611,8 +650,21 @@
                 }
                 document.getElementById("log-list").innerHTML = logHTML;
 
-                renderLineupList("v-lineup-list", m.vLineup, m.isTop); 
-                renderLineupList("h-lineup-list", m.hLineup, !m.isTop);
+                // 先攻リストの描写
+                let vListHtml = "";
+                m.vLineup.forEach((player, idx) => {
+                    let isActive = (m.isTop && idx === m.currentBatterIdx) ? "current-batter-active" : "";
+                    vListHtml += `<div class="player-row ${isActive}"><span>${idx+1}番: ${player}</span></div>`;
+                });
+                document.getElementById("v-lineup-list").innerHTML = vListHtml;
+
+                // 後攻リストの描写
+                let hListHtml = "";
+                m.hLineup.forEach((player, idx) => {
+                    let isActive = (!m.isTop && idx === m.currentBatterIdx) ? "current-batter-active" : "";
+                    hListHtml += `<div class="player-row ${isActive}"><span>${idx+1}番: ${player}</span></div>`;
+                });
+                document.getElementById("h-lineup-list").innerHTML = hListHtml;
 
                 let selectorHTML = "";
                 Object.keys(appDb.matches).forEach(key => {
@@ -622,15 +674,6 @@
                 });
                 document.getElementById("app-match-selector").innerHTML = selectorHTML;
             } catch(e) { console.log(e); }
-        }
-
-        function renderLineupList(elementId, lineupArray, isAttackingTeam) {
-            let html = ""; let m = getActiveMatch();
-            lineupArray.forEach((player, idx) => {
-                let isActive = (isAttackingTeam && idx === m.currentBatterIdx) ? "current-batter-active" : "";
-                html += `<div class="player-row ${isActive}"><span>${idx+1}番: ${player}</span></div>`;
-            });
-            document.getElementById(elementId).innerHTML = html;
         }
     </script>
 </body>
