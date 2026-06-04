@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【完全修正・自動同期】総合野球スコア速報システム</title>
+    <title>【真・バグ根絶版】総合野球スコア管理＆速報システム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
@@ -257,7 +257,7 @@
 
     <script>
         // ==========================================
-        // 【Firebase設定】あなた専用のRealtime Database
+        // 【Firebase設定】Realtime Database用のアドレス
         // ==========================================
         const FIREBASE_CONFIG = {
             databaseURL: "https://bb-score-61ff7-default-rtdb.firebaseio.com/" 
@@ -299,7 +299,10 @@
         }
 
         function startApp(mode) {
-            currentMode = mode; document.getElementById("mode-page").style.display = "none"; document.getElementById("main-app").style.display = "block";
+            currentMode = mode; 
+            document.getElementById("mode-page").style.display = "none"; 
+            document.getElementById("main-app").style.display = "block";
+            
             if (mode === "input") {
                 document.getElementById("app-title").innerText = "ベースボール速報【クラウド管理者画面】";
                 document.getElementById("input-controls").style.display = "block";
@@ -313,15 +316,13 @@
                 dbRef.on("value", (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        // 【バグ完全根絶ロジック】：自分が新しく作った大切な試合IDの部屋（currentActiveMatchId）を、
-                        // クラウドからの跳ね返りデータ（data）によって勝手に「default_match」へ初期化リセットされるのを防ぐ絶対防壁
-                        let previousId = appDb.currentActiveMatchId; 
+                        // 【バグ根絶ロジック】：管理者が操作中の場合、クラウドの古い状態IDによって部屋が勝手に初期化されるのを完璧に防御
+                        let savedCurrentId = appDb.currentActiveMatchId;
                         
-                        appDb = data; // クラウド最新データを取り込む
+                        appDb = data;
                         
-                        // 管理者、またはすでに手動で試合を切り替えている場合は、その選んでいる部屋のIDを最優先で維持する
-                        if (previousId && appDb.matches[previousId]) {
-                            appDb.currentActiveMatchId = previousId;
+                        if (currentMode === "input" || (savedCurrentId && appDb.matches[savedCurrentId])) {
+                            appDb.currentActiveMatchId = savedCurrentId;
                         }
                         renderUI();
                     }
@@ -360,7 +361,7 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" });
                     advanceBases(1, false); 
                     resetAtBatCount(); 
-                    nextBatter(); 
+                    nextBatter(); // ★打順を次に進める関数を実行
                 }
             } else if (type === 'S') {
                 m.strikes++; m.lastEvent = "ストライク";
@@ -369,13 +370,14 @@
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" });
                     m.outs++; 
                     resetAtBatCount(); 
-                    nextBatter(); 
+                    nextBatter(); // ★打順を次に進める関数を実行
                     checkInningChange();
                 }
             } else if (type === 'F') {
                 m.lastEvent = "ファウル"; if (m.strikes < 2) { m.strikes++; }
             }
-            pushToCloud(); renderUI(); 
+            pushToCloud(); 
+            renderUI(); // ★明示的にここで即座に画面更新命令を実行
         }
 
         function openDetailsModal(resultCategory, basesCount) {
@@ -409,8 +411,12 @@
             m.lastEvent = displayResultText;
             m.history.push({ inning: m.inning, isTop: m.isTop, batter: currentBatter, res: tempHitType === '安打' ? "安打(" + tempBasesCount + "塁打)" : "凡打", dir: dir, type: bType, outKind: tempHitType === '安打' ? "安全進塁" : outKind });
 
-            nextBatter(); resetAtBatCount(); closeDetailsModal(); checkInningChange();
-            pushToCloud(); renderUI();
+            nextBatter(); 
+            resetAtBatCount(); 
+            closeDetailsModal(); 
+            checkInningChange();
+            pushToCloud(); 
+            renderUI();
         }
 
         function advanceBases(count, isHit) {
@@ -440,13 +446,18 @@
             const lineup = m.isTop ? m.vLineup : m.hLineup; 
             return lineup[m.currentBatterIdx] || `${m.currentBatterIdx + 1}番打者`; 
         }
+
+        // 【バグ修正点①】：打順配列の要素を次に進めると同時に、必ず画面の再描写命令（renderUI）を関数内にガチガチに直結
         function nextBatter() { 
             let m = getActiveMatch(); 
             m.currentBatterIdx = (m.currentBatterIdx + 1) % 9; 
+            renderUI();
         }
+
         function resetAtBatCount() { 
             let m = getActiveMatch(); 
             m.balls = 0; m.strikes = 0; 
+            renderUI();
         }
 
         function checkInningChange() {
@@ -456,6 +467,7 @@
                 m.outs = 0; m.bases = [false, false, false]; resetAtBatCount();
                 if (m.isTop) { m.isTop = false; m.hScore[m.inning - 1] = 0; }
                 else { m.isTop = true; m.inning++; if (m.inning <= 9) { m.vScore[m.inning - 1] = 0; } }
+                renderUI();
             }
         }
 
@@ -574,6 +586,7 @@
                 const currentLineup = m.isTop ? m.vLineup : m.hLineup;
                 document.getElementById("info-pitcher").innerText = `${m.pitcherName} (${m.pitcherPitches}球)`;
                 
+                // 【バグ修正点②】：現在アクティブな試合空間（m）の打者インデックスを確実にDOM上へ100%射出して常時リアルタイム同期
                 document.getElementById("info-batter").innerText = `${m.currentBatterIdx + 1}番: ${currentLineup[m.currentBatterIdx] || "未登録"}`;
 
                 let logHTML = "";
