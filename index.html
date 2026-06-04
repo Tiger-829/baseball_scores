@@ -3,513 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロ仕様・野球速報＆詳細スタッツ収集システム</title>
-    <style>
-        /* 全体・ダークモードデザイン */
-        *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #121212; color: #e0e0e0; text-align: center; }
-        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
-        .box { background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-        
-        /* ログイン画面 */
-        #login-page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .login-box { width: 90%; max-width: 360px; background: #1e1e1e; border: 1px solid #444; border-radius: 12px; padding: 25px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        .input-group label { display: block; font-size: 14px; color: #aaa; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 12px; font-size: 16px; background: #2d2d2d; color: white; border: 1px solid #555; border-radius: 6px; }
-        
-        /* モード選択 */
-        #mode-page { display: none; padding-top: 50px; }
-        #main-app { display: none; }
-        h1 { font-size: 20px; color: #4caf50; margin: 10px 0; }
-        
-        /* スコアボード */
-        .score-table { width: 100%; border-collapse: collapse; background: #141916; font-family: monospace; font-size: 16px; margin-bottom: 10px; }
-        .score-table th, .score-table td { border: 1px solid #333; padding: 6px; text-align: center; }
-        .score-table th { background: #222; font-size: 12px; color: #aaa; }
-        .team-name-cell { text-align: left !important; font-weight: bold; width: 80px; }
-        
-        /* 対戦インフォ */
-        .match-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; background: #252525; padding: 8px; border-radius: 6px; margin-bottom: 10px; }
-        .match-info-item { text-align: left; }
-        .match-info-label { color: #888; font-size: 11px; display: block; }
-        .match-info-value { font-weight: bold; font-size: 15px; color: #fff; }
-        
-        /* BSO & ダイヤモンド */
-        .live-status-layout { display: flex; align-items: center; justify-content: space-around; background: #151515; padding: 10px; border-radius: 8px; }
-        .count-indicator { font-family: monospace; font-size: 22px; text-align: left; font-weight: bold; line-height: 1.4; }
-        .yellow { color: #ffd700; } .blue { color: #1e90ff; } .red { color: #ff4500; }
-        
-        .scorebook-cell { width: 100px; height: 100px; border: 2px solid #444; position: relative; background: #1a1a1a; border-radius: 6px; }
-        .diamond-line { position: absolute; width: 50px; height: 50px; border: 1px solid #333; top: 23px; left: 23px; transform: rotate(45deg); }
-        .base { position: absolute; width: 14px; height: 14px; background: #444; border: 1px solid #222; transform: rotate(45deg); transition: background 0.3s, transform 0.3s; }
-        .b1 { right: 12px; top: 41px; } .b2 { left: 41px; top: 12px; } .b3 { left: 12px; top: 41px; }
-        .cell-text { position: absolute; bottom: 38px; width: 100%; text-align: center; font-size: 13px; font-weight: bold; color: #fff; pointer-events: none; }
-        .active-base { background: #4caf50 !important; border-color: #fff; transform: rotate(45deg) scale(1.1); }
-
-        /* 操作系 */
-        #input-controls { display: none; }
-        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .btn { padding: 10px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
-        .btn-b { background: #1e90ff; } .btn-s { background: #ffd700; color: black; }
-        
-        .hit-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; grid-column: span 2; }
-        .btn-hit { font-size: 11px; padding: 8px 2px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; }
-        .btn-h1 { background: #2e7d32; } .btn-h2 { background: #1b5e20; } .btn-h3 { background: #004d40; } .btn-h4 { background: #b71c1c; }
-        
-        .btn-o { background: #ff4500; grid-column: span 2; padding: 10px; font-size: 15px; }
-        .btn-change { background: #9c27b0; grid-column: span 2; padding: 8px; font-size: 13px; }
-        .btn-util { background: #555; font-size: 12px; padding: 6px; }
-        
-        /* ポップアップモーダル（選手交代・打撃詳細共通） */
-        .modal-mask { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
-        textarea { width: 100%; height: 50px; background: #000; color: #a0ff00; font-family: monospace; padding: 6px; border-radius: 4px; border: 1px solid #333; font-size: 11px; resize: none; margin-top: 5px; }
-        
-        /* 履歴ログ */
-        .log-container { text-align: left; background: #000; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; max-height: 150px; overflow-y: auto; color: #a0ff00; border: 1px solid #222; }
-        .log-item { border-bottom: 1px solid #111; padding: 4px 0; line-height: 1.4; }
-
-        .lineup-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .lineup-box { background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; padding: 8px; text-align: left; font-size: 12px; }
-        .lineup-title { font-weight: bold; color: #4caf50; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px; }
-    </style>
-</head>
-<body>
-
-    <div id="login-page">
-        <div class="login-box">
-            <h2 style="margin-top:0; color:#4caf50;">TEAM LOGIN</h2>
-            <div class="input-group">
-                <label>団体名（チーム名）</label>
-                <input type="text" id="login-team" value="タイガース">
-            </div>
-            <div class="input-group">
-                <label>パスワード</label>
-                <input type="password" id="login-pass" value="tiger123">
-            </div>
-            <button class="btn btn-h1" style="width:100%; margin-top:10px;" onclick="handleLogin()">ログイン認証</button>
-        </div>
-    </div>
-
-    <div id="mode-page" class="container">
-        <div class="box">
-            <h2>ログイン成功</h2>
-            <button class="btn btn-b" style="width:100%; margin-bottom:15px; height: 60px;" onclick="startApp('input')">【管理者用】スコア入力モード</button>
-            <button class="btn btn-h1" style="width:100%; height: 60px;" onclick="startApp('view')">【一般・保護者用】スコア閲覧モード</button>
-        </div>
-    </div>
-
-    <div id="main-app" class="container">
-        <h1 id="app-title">ベースボール速報</h1>
-
-        <div class="box" style="padding: 5px;">
-            <table class="score-table">
-                <thead>
-                    <tr><th>チーム</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>R</th></tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="team-name-cell">先攻チーム</td>
-                        <td id="r-v1">0</td><td id="r-v2">-</td><td id="r-v3">-</td><td id="r-v4">-</td><td id="r-v5">-</td><td id="r-v6">-</td><td id="r-v7">-</td><td id="r-v8">-</td><td id="r-v9">-</td>
-                        <td id="r-v-total" style="font-weight:bold; color:#ffd700;">0</td>
-                    </tr>
-                    <tr>
-                        <td class="team-name-cell">後攻チーム</td>
-                        <td id="r-h1">-</td><td id="r-h2">-</td><td id="r-h3">-</td><td id="r-h4">-</td><td id="r-h5">-</td><td id="r-h6">-</td><td id="r-h7">-</td><td id="r-h8">-</td><td id="r-h9">-</td>
-                        <td id="r-h-total" style="font-weight:bold; color:#ffd700;">0</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="match-info-grid">
-            <div class="match-info-item"><span class="match-info-label">投手（守備球数）</span><span class="match-info-value" id="info-pitcher">-- (0球)</span></div>
-            <div class="match-info-item"><span class="match-info-label">現在の下席（打順）</span><span class="match-info-value" id="info-batter">-- (1番)</span></div>
-        </div>
-
-        <div class="box" style="padding:10px;">
-            <div class="live-status-layout">
-                <div class="count-indicator">
-                    B: <span id="b-dots" class="blue">○○○</span><br>
-                    S: <span id="s-dots" class="yellow">○○</span><br>
-                    O: <span id="o-dots" class="red">○○</span>
-                </div>
-                <div class="scorebook-cell">
-                    <div class="diamond-line"></div>
-                    <div id="base2" class="base b2"></div>
-                    <div id="base3" class="base b3"></div>
-                    <div id="base1" class="base b1"></div>
-                    <div class="cell-text" id="cell-result">試合前</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="input-controls" class="box">
-            <h3>【管理者操作パネル】</h3>
-            <div class="grid-buttons">
-                <button class="btn btn-b" onclick="pitch('B')">ボール</button>
-                <button class="btn btn-s" onclick="pitch('S')">ストライク</button>
-                <div class="hit-btn-container">
-                    <button class="btn-hit btn-h1" onclick="openDetailsModal('安打', 1)">単打</button>
-                    <button class="btn-hit btn-h2" onclick="openDetailsModal('二塁打', 2)">二塁打</button>
-                    <button class="btn-hit btn-h3" onclick="openDetailsModal('三塁打', 3)">三塁打</button>
-                    <button class="btn-hit btn-h4" onclick="openDetailsModal('本塁打', 4)">本塁打</button>
-                </div>
-                <button class="btn btn-o" onclick="openDetailsModal('凡打', 0)">凡打・アウト詳細入力</button>
-                <button class="btn btn-change" onclick="openChangeModal()">🔄 選手交代・走者微調整メニュー</button>
-                <button class="btn btn-util" onclick="undo()">1手戻す</button>
-                <button class="btn btn-util" style="background:#424242;" onclick="resetAtBatCount()">カウントリセット</button>
-            </div>
-            <h4 style="margin:10px 0 0 0; font-size:12px; color:#aaa;">転送・詳細分析用JSON（クリックで全選択コピー）</h4>
-            <textarea id="output-code" readonly onclick="this.select()"></textarea>
-        </div>
-
-        <div id="view-controls" class="box">
-            <h3>【スコアデータの同期】</h3>
-            <textarea id="input-code" placeholder="ここにコードを貼り付けます"></textarea>
-            <button class="btn btn-b" style="width:100%; margin-top:5px; padding:10px;" onclick="syncViewData()">データを同期する</button>
-        </div>
-
-        <div class="box">
-            <h3>【詳細試合記録タイムライン（スコア清書用）】</h3>
-            <div id="log-list" class="log-container">データを読み込んでください。</div>
-        </div>
-
-        <div class="lineup-layout">
-            <div class="lineup-box"><div class="lineup-title">先攻・打線</div><div id="v-lineup-list"></div></div>
-            <div class="lineup-box"><div class="lineup-title">後攻・打線</div><div id="h-lineup-list"></div></div>
-        </div>
-    </div>
-
-    <div id="details-modal" class="modal-mask">
-        <div class="login-box" style="background:#252525; max-width:420px; width:95%;">
-            <h3 id="modal-details-title" style="margin-top:0; color:#4caf50;">打撃詳細記録</h3>
-            
-            <div class="input-group">
-                <label>打球が飛んだ場所（方向）</label>
-                <select id="detail-direction">
-                    <option value="ピッチャー">投手 (1)</option><option value="キャッチャー">捕手 (2)</option>
-                    <option value="ファースト">一塁 (3)</option><option value="セカンド">二塁 (4)</option>
-                    <option value="サード">三塁 (5)</option><option value="ショート">遊撃 (6)</option>
-                    <option value="レフト">左翼 (7)</option><option value="センター">中翼 (8)</option>
-                    <option value="ライト">右翼 (9)</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label>打球の種類（性質）</label>
-                <select id="detail-type">
-                    <option value="ゴロ">ゴロ</option><option value="フライ">フライ</option>
-                    <option value="ライナー">ライナー</option><option value="バント">バント</option>
-                </select>
-            </div>
-
-            <div class="input-group" id="out-detail-group" style="display:none;">
-                <label>アウトの形（封殺・刺殺・併殺など）</label>
-                <select id="detail-out-kind">
-                    <option value="通常アウト">バッターのみアウト（通常のゴロ/フライアウト）</option>
-                    <option value="二塁封殺">一塁走者が二塁で封殺（フォースアウト）</option>
-                    <option value="三塁封殺">走者が三塁で封殺</option>
-                    <option value="本塁封殺">走者が本塁で封殺（ホームタッチアウト）</option>
-                    <option value="ダブルプレー">ゲッツー（併殺打）</option>
-                </select>
-            </div>
-
-            <div class="grid-buttons">
-                <button class="btn btn-h1" onclick="commitDetails()">詳細データを確定して反映</button>
-                <button class="btn btn-util" onclick="closeDetailsModal()">キャンセル</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="change-modal" class="modal-mask">
-        <div class="login-box" style="background:#252525;">
-            <h3 style="margin-top:0; color:#9c27b0;">選手交代・ランナー微調整</h3>
-            <div class="input-group">
-                <label>操作の種類</label>
-                <select id="change-role" onchange="toggleChangeFields()">
-                    <option value="pitcher">投手交代</option><option value="batter">代打</option>
-                    <option value="runner_on">ランナーを配置する</option><option value="runner_off">ランナーを消す（盗塁死など）</option>
-                </select>
-            </div>
-            <div class="input-group" id="change-target-group" style="display:none;">
-                <label id="change-target-label">対象</label>
-                <select id="change-target"></select>
-            </div>
-            <div class="input-group" id="change-name-group"><label>選手名</label><input type="text" id="change-name"></div>
-            <div class="grid-buttons">
-                <button class="btn btn-h1" style="background:#9c27b0;" onclick="executeChange()">反映</button>
-                <button class="btn btn-util" onclick="closeChangeModal()">閉じる</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
-
-        // 試合の瞬間状態（ステート）。history配列の中に、質問者様が求める「詳細レコード」が蓄積されます。
-        let matchState = {
-            inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0,
-            pitcherName: "田中(投)", pitcherPitches: 0, currentBatterIdx: 0,
-            vScore: [0,0,0,0,0,0,0,0,0], hScore: [null,null,null,null,null,null,null,null,null],
-            vLineup: ["1番 打者A", "2番 打者B", "3番 打者C", "4番 打者D", "5番 打者E", "6番 打者F", "7番 打者G", "8番 打者H", "9番 打者I"],
-            hLineup: ["1番 選手大", "2番 選手二", "3番 選手三", "4番 選手四", "5番 選手五", "6番 選手六", "7番 選手七", "8番 選手八", "9番 選手九"],
-            bases: [false, false, false],
-            lastEvent: "試合前",
-            history: [] // 【ここを詳細化】[ {イニング, 打者, 結果, 方向, 種類, アウト詳細}, ... ]
-        };
-
-        let undoStack = [];
-        let currentMode = "view";
-        let tempHitType = ""; // 一時保存用フラグ
-        let tempBasesCount = 0;
-
-        function handleLogin() {
-            const t = document.getElementById("login-team").value;
-            const p = document.getElementById("login-pass").value;
-            if (authDatabase[t] === p) {
-                document.getElementById("login-page").style.display = "none";
-                document.getElementById("mode-page").style.display = "block";
-            } else { alert("パスワードが違います。"); }
-        }
-
-        function startApp(mode) {
-            currentMode = mode;
-            document.getElementById("mode-page").style.display = "none";
-            document.getElementById("main-app").style.display = "block";
-            if (mode === "input") {
-                document.getElementById("app-title").innerText = "ベースボール速報【入力管理者用】";
-                document.getElementById("input-controls").style.display = "block";
-                document.getElementById("view-controls").style.display = "none";
-            } else {
-                document.getElementById("app-title").innerText = "ベースボール速報【一般閲覧用】";
-                document.getElementById("input-controls").style.display = "none";
-                document.getElementById("view-controls").style.display = "block";
-            }
-            renderUI();
-        }
-
-        function saveState() { undoStack.push(JSON.stringify(matchState)); }
-
-        function pitch(type) {
-            saveState();
-            matchState.pitcherPitches++;
-            if (type === 'B') {
-                matchState.balls++;
-                if (matchState.balls === 4) {
-                    matchState.lastEvent = "四球";
-                    matchState.history.push({ inning: matchState.inning, batter: getCurrentBatterName(), res: "四球", dir: "ピッチャー", type: "見逃し", outKind: "四球出塁" });
-                    advanceBases(1, false);
-                    resetAtBatCount();
-                }
-            } else if (type === 'S') {
-                matchState.strikes++;
-                if (matchState.strikes === 3) {
-                    matchState.lastEvent = "三振";
-                    matchState.history.push({ inning: matchState.inning, batter: getCurrentBatterName(), res: "三振", dir: "キャッチャー", type: "空振り", outKind: "三振アウト" });
-                    matchState.outs++;
-                    resetAtBatCount();
-                    checkInningChange();
-                }
-            }
-            renderUI();
-        }
-
-        // 2ステップUI：ヒットや凡打を押した時に詳細ポップアップを開く
-        function openDetailsModal(resultCategory, basesCount) {
-            tempHitType = resultCategory; // '安打' or '凡打'
-            tempBasesCount = basesCount;  // 1=単打, 2=二塁打... 0=凡打
-            
-            document.getElementById("details-modal").style.display = "flex";
-            document.getElementById("modal-details-title").innerText = resultCategory + " の詳細を選択";
-            
-            // 凡打（アウト）の時だけ、封殺（ゲッツー等）のドロップダウンを表示するロジック
-            document.getElementById("out-detail-group").style.display = (resultCategory === '凡打') ? "block" : "none";
-        }
-
-        function closeDetailsModal() { document.getElementById("details-modal").style.display = "none"; }
-
-        // 詳細ポップアップで「確定」を押した時のコア処理
-        function commitDetails() {
-            saveState();
-            matchState.pitcherPitches++;
-
-            const dir = document.getElementById("detail-direction").value;
-            const bType = document.getElementById("detail-type").value;
-            const outKind = document.getElementById("detail-out-kind").value;
-            const currentBatter = getCurrentBatterName();
-
-            let displayResultText = "";
-
-            if (tempHitType === '安打') {
-                displayResultText = `${dir}への${bType}安打`;
-                // 【自動進塁ロジック連動】
-                advanceBases(tempBasesCount, true);
-            } else {
-                // 凡打（アウト・封殺）の処理
-                displayResultText = `${dir}${bType}アウト`;
-                if (outKind === "通常アウト") {
-                    matchState.outs++;
-                } else if (outKind === "二塁封殺") {
-                    matchState.outs++; matchState.bases[0] = false; // 一塁走者が二塁フォースアウトで消える
-                    displayResultText += " (1塁走者2塁封殺)";
-                } else if (outKind === "三塁封殺") {
-                    matchState.outs++; matchState.bases[1] = false;
-                } else if (outKind === "本塁封殺") {
-                    matchState.outs++; matchState.bases[2] = false;
-                } else if (outKind === "ダブルプレー") {
-                    matchState.outs += 2; matchState.bases[0] = false; // 簡易的に一塁走者とバッターがアウトと仮定
-                    displayResultText += " (ゲッツー併殺)";
-                }
-            }
-
-            matchState.lastEvent = displayResultText;
-
-            // ★【詳細構造化データ】の配列へオブジェクトとして格納（これがコピペデータに入ります）
-            matchState.history.push({
-                inning: matchState.inning,
-                isTop: matchState.isTop,
-                batter: currentBatter,
-                res: tempHitType === '安打' ? "安打(" + tempBasesCount + "塁打)" : "凡打",
-                dir: dir,
-                type: bType,
-                outKind: tempHitType === '安打' ? "進塁安全" : outKind
-            });
-
-            nextBatter();
-            resetAtBatCount();
-            closeDetailsModal();
-            checkInningChange();
-            renderUI();
-        }
-
-        function advanceBases(count, isHit) {
-            let currentRunners = [...matchState.bases];
-            matchState.bases = [false, false, false];
-            for (let i = 2; i >= 0; i--) {
-                if (currentRunners[i]) {
-                    let newPos = i + count;
-                    if (newPos >= 3) { addRun(); } else { matchState.bases[newPos] = true; }
-                }
-            }
-            if (isHit) { if (count === 4) { addRun(); } else { matchState.bases[count - 1] = true; } }
-            else {
-                // 四球押し出し
-                if (!currentRunners[0]) { matchState.bases[0] = true; matchState.bases[1] = currentRunners[1]; matchState.bases[2] = currentRunners[2]; }
-                else if (!currentRunners[1]) { matchState.bases[0] = true; matchState.bases[1] = true; matchState.bases[2] = currentRunners[2]; }
-                else if (!currentRunners[2]) { matchState.bases[0] = true; matchState.bases[1] = true; matchState.bases[2] = true; }
-                else { matchState.bases[0] = true; matchState.bases[1] = true; matchState.bases[2] = true; addRun(); }
-            }
-        }
-
-        function addRun() {
-            let idx = matchState.inning - 1;
-            if (matchState.isTop) { matchState.vScore[idx] = (matchState.vScore[idx] || 0) + 1; }
-            else { matchState.hScore[idx] = (matchState.hScore[idx] || 0) + 1; }
-        }
-
-        function getCurrentBatterName() {
-            const lineup = matchState.isTop ? matchState.vLineup : matchState.hLineup;
-            return lineup[matchState.currentBatterIdx];
-        }
-        function nextBatter() { matchState.currentBatterIdx = (matchState.currentBatterIdx + 1) % 9; }
-        function resetAtBatCount() { matchState.balls = 0; matchState.strikes = 0; }
-
-        function checkInningChange() {
-            if (matchState.outs >= 3) {
-                alert("3アウトチェンジ");
-                matchState.outs = 0; matchState.bases = [false, false, false]; resetAtBatCount();
-                if (matchState.isTop) { matchState.isTop = false; matchState.hScore[matchState.inning - 1] = 0; }
-                else { matchState.isTop = true; matchState.inning++; if (matchState.inning <= 9) { matchState.vScore[matchState.inning - 1] = 0; } }
-            }
-        }
-
-        function undo() {
-            if (undoStack.length > 0) { matchState = JSON.parse(undoStack.pop()); renderUI(); }
-            else { alert("これ以上戻せません。"); }
-        }
-
-        function openChangeModal() { document.getElementById("change-modal").style.display = "flex"; toggleChangeFields(); }
-        function closeChangeModal() { document.getElementById("change-modal").style.display = "none"; }
-        function toggleChangeFields() {
-            const role = document.getElementById("change-role").value;
-            const tg = document.getElementById("change-target-group");
-            const ts = document.getElementById("change-target");
-            if (role === 'runner_on' || role === 'runner_off') {
-                tg.style.display = "block";
-                ts.innerHTML = `<option value="0">一塁</option><option value="1">二塁</option><option value="2">三塁</option>`;
-            } else { tg.style.display = "none"; }
-        }
-
-        function executeChange() {
-            saveState();
-            const role = document.getElementById("change-role").value;
-            const name = document.getElementById("change-name").value || "交代選手";
-            const target = parseInt(document.getElementById("change-target").value);
-
-            if (role === 'pitcher') { matchState.pitcherName = name; matchState.pitcherPitches = 0; }
-            else if (role === 'runner_on') { matchState.bases[target] = true; }
-            else if (role === 'runner_off') { matchState.bases[target] = false; }
-            closeChangeModal(); renderUI();
-        }
-
-        function syncViewData() {
-            try {
-                const code = document.getElementById("input-code").value;
-                if(!code.trim()) return;
-                matchState = JSON.parse(code);
-                renderUI();
-                alert("詳細スコアボードを最新状態に同期しました！");
-            } catch(e) { alert("同期エラーです。"); }
-        }
-
-        function renderUI() {
-            document.getElementById("display-inning").innerText = matchState.inning + "回" + (matchState.isTop ? "表" : "裏") + "の攻撃";
-            document.getElementById("b-dots").innerText = "●".repeat(matchState.balls) + "○".repeat(3 - matchState.balls);
-            document.getElementById("s-dots").innerText = "●".repeat(matchState.strikes) + "○".repeat(2 - matchState.strikes);
-            document.getElementById("o-dots").innerText = "●".repeat(matchState.outs) + "○".repeat(2 - matchState.outs);
-            
-            document.getElementById("base1").className = "base b1" + (matchState.bases[0] ? " active-base" : "");
-            document.getElementById("base2").className = "base b2" + (matchState.bases[1] ? " active-base" : "");
-            document.getElementById("base3").className = "base b3" + (matchState.bases[2] ? " active-base" : "");
-            document.getElementById("cell-result").innerText = matchState.lastEvent;
-
-            // スコアボード数字
-            let vTotal = 0, hTotal = 0;
-            for(let i=1; i<=9; i++) {
-                let v = matchState.vScore[i-1]; let h = matchState.hScore[i-1];
-                document.getElementById("r-v" + i).innerText = (v !== null && v !== undefined) ? v : "-";
-                document.getElementById("r-h" + i).innerText = (h !== null && h !== undefined) ? h : "-";
-                if(v !== null) vTotal += v; if(h !== null) hTotal += h;
-            }
-            document.getElementById("r-v-total").innerText = vTotal; document.getElementById("r-h-total").innerText = hTotal;
-
-            // テキストインフォ
-            const currentLineup = matchState.isTop ? matchState.vLineup : matchState.hLineup;
-            document.getElementById("info-pitcher").innerText = `${matchState.pitcherName} (${matchState.pitcherPitches}球)`;
-            document.getElementById("info-batter").innerText = currentLineup[matchState.currentBatterIdx];
-
-            // 【新機能】詳細データから「清書用タイムライン」を動的レンダリング
-            let logHTML = "";
-            if (matchState.history.length === 0) {
-                logHTML = "打席記録はまだありません。";
-            } else {
-                matchState.history.forEach((h, idx) => {
-                    logHTML += `<div class="log-item"><b>[${h.inning}回${h.isTop?'表':'裏'}]</b> 打者:${h.batter} ⇒ <b>【${h.res}】</b> (${h.dir}への${h.type} / 詳細:${h.outKind})</div>`;
-                });
-            }
-            document.getElementById("log-list").innerHTML = logHTML;
-
-            // オーダー表
-            renderLineupList("v-lineup-list", matchState.vLineup, matchState.isTop);
-            renderLineupList("h-lineup-list", matchState.hLineup, !matchState.isTop);
-
-            if (currentMode === "input") { document.getElementById("output-code").value = JSON.<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロ仕様・野球速報＆詳細スタッツ収集システム</title>
+    <title>【完全復活版】リアルタイム野球速報システム</title>
     <style>
         /* 全体・ダークモードデザイン */
         *, *::before, *::after { box-sizing: border-box; }
@@ -541,7 +35,7 @@
         .match-info-label { color: #888; font-size: 11px; display: block; }
         .match-info-value { font-weight: bold; font-size: 15px; color: #fff; }
         
-        /* BSO ＆ ランナー状況の可視化（速報表示） */
+        /* BSO ＆ ランナー状況の可視化 */
         .live-status-layout { display: flex; align-items: center; justify-content: space-around; background: #151515; padding: 10px; border-radius: 8px; }
         .count-indicator { font-family: monospace; font-size: 22px; text-align: left; font-weight: bold; line-height: 1.4; }
         .yellow { color: #ffd700; } .blue { color: #1e90ff; } .red { color: #ff4500; }
@@ -571,7 +65,7 @@
         .btn-change { background: #9c27b0; grid-column: span 2; padding: 8px; font-size: 13px; }
         .btn-util { background: #555; font-size: 12px; padding: 6px; }
         
-        /* 各種ポップアップモーダルの共通マスク */
+        /* ポップアップモーダル */
         .modal-mask { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
         textarea { width: 100%; height: 50px; background: #000; color: #a0ff00; font-family: monospace; padding: 6px; border-radius: 4px; border: 1px solid #333; font-size: 11px; resize: none; margin-top: 5px; }
         
@@ -650,7 +144,10 @@
                 </div>
                 <div class="scorebook-cell">
                     <div class="diamond-line"></div>
-                    <div id="base2" class="base b2"></div> <div id="base3" class="base b3"></div> <div id="base1" class="base b1"></div> <div class="cell-text" id="cell-result">試合中</div>
+                    <div id="base2" class="base b2"></div>
+                    <div id="base3" class="base b3"></div>
+                    <div id="base1" class="base b1"></div>
+                    <div class="cell-text" id="cell-result">試合中</div>
                 </div>
             </div>
         </div>
@@ -761,19 +258,17 @@
     </div>
 
     <script>
-        // ログイン設定
         const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
 
-        // 試合の単一状態管理（ステートオブジェクト）
         let matchState = {
             inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0,
             pitcherName: "田中(投)", pitcherPitches: 0, currentBatterIdx: 0,
             vScore: [0,0,0,0,0,0,0,0,0], hScore: [null,null,null,null,null,null,null,null,null],
             vLineup: ["1番 打者A", "2番 打者B", "3番 打者C", "4番 打者D", "5番 打者E", "6番 打者F", "7番 打者G", "8番 打者H", "9番 打者I"],
             hLineup: ["1番 選手大", "2番 選手二", "3番 選手三", "4番 選手四", "5番 選手五", "6番 選手六", "7番 選手七", "8番 選手八", "9番 選手九"],
-            bases: [false, false, false], // [一塁, 二塁, 三塁] のランナー有無
+            bases: [false, false, false], 
             lastEvent: "試合中",
-            history: [] // 詳細ログ配列
+            history: [] 
         };
 
         let undoStack = [];
@@ -808,7 +303,6 @@
 
         function saveState() { undoStack.push(JSON.stringify(matchState)); }
 
-        // 【バグ修正済】：ストライクとボールを押した時に内部状態の変更からランプ点灯まで最優先で処理されます
         function pitch(type) {
             saveState();
             matchState.pitcherPitches++;
@@ -835,7 +329,7 @@
                     checkInningChange();
                 }
             }
-            renderUI(); // 画面描写のリフレッシュ
+            renderUI(); 
         }
 
         function openDetailsModal(resultCategory, basesCount) {
@@ -848,7 +342,6 @@
 
         function closeDetailsModal() { document.getElementById("details-modal").style.display = "none"; }
 
-        // ポップアップ詳細データの確定
         function commitDetails() {
             saveState();
             const dir = document.getElementById("detail-direction").value;
@@ -860,27 +353,26 @@
 
             if (tempHitType === '安打') {
                 displayResultText = `${dir}への${bType}安打`;
-                advanceBases(tempBasesCount, true); // 複数塁打の自動進塁計算
+                advanceBases(tempBasesCount, true); 
             } else {
                 displayResultText = `${dir}${bType}アウト`;
                 if (outKind === "通常アウト") {
                     matchState.outs++;
                 } else if (outKind === "二塁封殺") {
-                    matchState.outs++; matchState.bases[0] = false; // 一塁走者が二塁フォースアウト
+                    matchState.outs++; matchState.bases[0] = false;
                     displayResultText += " (二塁封殺)";
                 } else if (outKind === "三塁封殺") {
                     matchState.outs++; matchState.bases[1] = false;
                 } else if (outKind === "本塁封殺") {
                     matchState.outs++; matchState.bases[2] = false;
                 } else if (outKind === "ダブルプレー") {
-                    matchState.outs += 2; matchState.bases[0] = false; // ゲッツー
+                    matchState.outs += 2; matchState.bases[0] = false;
                     displayResultText += " (併殺打)";
                 }
             }
 
             matchState.lastEvent = displayResultText;
 
-            // 裏側の詳細JSONデータの蓄積
             matchState.history.push({
                 inning: matchState.inning,
                 isTop: matchState.isTop,
@@ -898,7 +390,6 @@
             renderUI();
         }
 
-        // 逆順ループによる安全進塁アルゴリズム（データ上書きバグ排除）
         function advanceBases(count, isHit) {
             let currentRunners = [...matchState.bases];
             matchState.bases = [false, false, false];
@@ -910,7 +401,6 @@
             }
             if (isHit) { if (count === 4) { addRun(); } else { matchState.bases[count - 1] = true; } }
             else {
-                // 四球押し出し処理
                 if (!currentRunners[0]) { matchState.bases[0] = true; matchState.bases[1] = currentRunners[1]; matchState.bases[2] = currentRunners[2]; }
                 else if (!currentRunners[1]) { matchState.bases[0] = true; matchState.bases[1] = true; matchState.bases[2] = currentRunners[2]; }
                 else if (!currentRunners[2]) { matchState.bases[0] = true; matchState.bases[1] = true; matchState.bases[2] = true; }
@@ -953,7 +443,7 @@
             const ts = document.getElementById("change-target");
             if (role === 'runner_on' || role === 'runner_off') {
                 tg.style.display = "block";
-                ts.innerHTML = `<option value="0">一塁（右の頂点）</option><option value="1">二塁（上の頂点）</option><option value="2">三塁（左の頂点）</option>`;
+                ts.innerHTML = `<option value="0">一塁（右頂点）</option><option value="1">二塁（上頂点）</option><option value="2">三塁（左頂点）</option>`;
             } else { tg.style.display = "none"; }
         }
 
@@ -963,12 +453,9 @@
             const name = document.getElementById("change-name").value || "交代選手";
             const target = parseInt(document.getElementById("change-target").value);
 
-            if (role === 'pitcher') { matchState.pitcherName = name; matchState.pitcherPitches = 0; matchState.lastEvent = "投手交代:" + name; }
-            else if (role === 'batter') {
-                let lineup = matchState.isTop ? matchState.vLineup : matchState.hLineup;
-                lineup[matchState.currentBatterIdx] = `${matchState.currentBatterIdx+1}番 ${name}`; matchState.lastEvent = "代打:" + name;
-            } else if (role === 'runner_on') { matchState.bases[target] = true; matchState.lastEvent = "走者配置修正"; }
-            else if (role === 'runner_off') { matchState.bases[target] = false; matchState.lastEvent = "走者アウト修正"; }
+            if (role === 'pitcher') { matchState.pitcherName = name; matchState.pitcherPitches = 0; }
+            else if (role === 'runner_on') { matchState.bases[target] = true; }
+            else if (role === 'runner_off') { matchState.bases[target] = false; }
             closeChangeModal(); renderUI();
         }
 
@@ -979,7 +466,7 @@
                 matchState = JSON.parse(code);
                 renderUI();
                 alert("詳細スコアデータを完全に同期しました！");
-            } catch(e) { alert("同期コードが正しくありません。"); }
+            } catch(e) { alert("同期エラーです。"); }
         }
 
         function renderUI() {
@@ -988,7 +475,6 @@
             document.getElementById("s-dots").innerText = "●".repeat(matchState.strikes) + "○".repeat(2 - matchState.strikes);
             document.getElementById("o-dots").innerText = "●".repeat(matchState.outs) + "○".repeat(2 - matchState.outs);
             
-            // 各ベースの頂点オブジェクトへのクラス付け替え
             document.getElementById("base1").className = "base b1" + (matchState.bases[0] ? " active-base" : "");
             document.getElementById("base2").className = "base b2" + (matchState.bases[1] ? " active-base" : "");
             document.getElementById("base3").className = "base b3" + (matchState.bases[2] ? " active-base" : "");
@@ -1007,7 +493,6 @@
             document.getElementById("info-pitcher").innerText = `${matchState.pitcherName} (${matchState.pitcherPitches}球)`;
             document.getElementById("info-batter").innerText = currentLineup[matchState.currentBatterIdx];
 
-            // スコアブック清書用詳細ログの動的表示
             let logHTML = "";
             if (matchState.history.length === 0) {
                 logHTML = "打席記録はまだありません。";
@@ -1022,19 +507,6 @@
             renderLineupList("h-lineup-list", matchState.hLineup, !matchState.isTop);
 
             if (currentMode === "input") { document.getElementById("output-code").value = JSON.stringify(matchState); }
-        }
-
-        function renderLineupList(elementId, lineupArray, isAttackingTeam) {
-            let html = "";
-            lineupArray.forEach((player, idx) => {
-                let isActive = (isAttackingTeam && idx === matchState.currentBatterIdx) ? "current-batter-active" : "";
-                html += `<div class="player-row ${isActive}"><span>${player}</span></div>`;
-            });
-            document.getElementById(elementId).innerHTML = html;
-        }
-    </script>
-</body>
-</html>stringify(matchState); }
         }
 
         function renderLineupList(elementId, lineupArray, isAttackingTeam) {
