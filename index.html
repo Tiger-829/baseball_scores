@@ -301,7 +301,7 @@
         }
 
         function startApp(mode) {
-            currentMode = mode; 
+            currentMode = mode; // ★ここで管理者(input)か一般(view)の権限がガチガチにセットされる
             document.getElementById("mode-page").style.display = "none"; 
             document.getElementById("main-app").style.display = "block";
             
@@ -319,7 +319,11 @@
                     const data = snapshot.val();
                     if (data && data.matches) {
                         let savedId = appDb.currentActiveMatchId;
+                        let savedMode = currentMode; // ★【最重要防壁】：クラウドからデータを受信する直前に、自分の絶対的な操作権限を一時退避
+                        
                         appDb = data;
+                        currentMode = savedMode; // ★【権限ロック】：クラウドの古いデータに上書きされてviewモードに落とされるのを100%遮断！
+                        
                         if (currentMode === "input" || (savedId && appDb.matches[savedId])) {
                             appDb.currentActiveMatchId = savedId;
                         }
@@ -338,6 +342,7 @@
         function saveState() { undoStack.push(JSON.stringify(appDb)); }
         
         function pushToCloud() {
+            // ★【権限バグ修正】：currentModeが絶対に"input"のままでロックされているため、今度は確実にクラウドへデータが送信されます
             if (currentMode === "input" && dbRef) {
                 dbRef.set(appDb);
             }
@@ -359,8 +364,8 @@
                     m.lastEvent = "四球";
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(m), res: "四球", dir: "投手(1)", type: "判定", outKind: "四球出塁" });
                     advanceBases(m, 1, false); 
-                    resetAtBatCount(m); // ★【修正】現在アクティブな部屋のS/Bカウントを0にリセットする
-                    nextBatter(m);     // ★【修正】現在アクティブな部屋の打順を確実に進める
+                    resetAtBatCount(m); 
+                    nextBatter(m); 
                 }
             } else if (type === 'S') {
                 m.strikes++; m.lastEvent = "ストライク";
@@ -368,8 +373,8 @@
                     m.lastEvent = "三振";
                     m.history.push({ inning: m.inning, isTop: m.isTop, batter: getCurrentBatterName(m), res: "三振", dir: "捕手(2)", type: "判定", outKind: "三振アウト" });
                     m.outs++; 
-                    resetAtBatCount(m); // ★【修正】現在アクティブな部屋のS/Bカウントを0にリセットする
-                    nextBatter(m);     // ★【修正】現在アクティブな部屋の打順を確実に進める
+                    resetAtBatCount(m); 
+                    nextBatter(m); 
                     checkInningChange(m);
                 }
             } else if (type === 'F') {
@@ -445,7 +450,6 @@
             return lineup[targetMatch.currentBatterIdx] || `${targetMatch.currentBatterIdx + 1}番打者`; 
         }
 
-        // ★【構造修正】：特定の部屋を100%確実に指定して打順をループローテーションさせる
         function nextBatter(targetMatch) { 
             if (targetMatch && targetMatch.currentBatterIdx !== undefined) {
                 targetMatch.currentBatterIdx = (targetMatch.currentBatterIdx + 1) % 9; 
@@ -453,7 +457,6 @@
             renderUI();
         }
 
-        // ★【構造修正】：特定の部屋のストライク・ボールカウントを確実にリセット
         function resetAtBatCount(targetMatch) { 
             if (targetMatch) {
                 targetMatch.balls = 0; 
@@ -496,7 +499,6 @@
         function openNewMatchModal() { document.getElementById("new-match-modal").style.display = "flex"; updateFormLabels(); }
         function closeNewMatchModal() { document.getElementById("new-match-modal").style.display = "none"; }
 
-        // ★【構造修正】：新規試合作成時に、打席位置（currentBatterIdx）を100%確実に 0（1番打者）として強制完全初期化パッキング
         function commitNewMatch() {
             saveState();
             const matchId = document.getElementById("form-match-id").value.trim() || "無題の試合";
@@ -512,7 +514,7 @@
             appDb.matches[matchId] = {
                 matchId: matchId, status: "進行中", vTeam: vTeam, hTeam: hTeam,
                 inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0, pitcherName: "投手名", pitcherPitches: 0, 
-                currentBatterIdx: 0, // ★【論理バグ完全駆逐】確実に1番打者のポインタを新規割り当て
+                currentBatterIdx: 0, 
                 vScore: [0,0,0,0,0,0,0,0,0], hScore: [null,null,null,null,null,null,null,null,null],
                 vLineup: vLineup, hLineup: hLineup, bases: [false, false, false], lastEvent: "プレーボール", history: []
             };
