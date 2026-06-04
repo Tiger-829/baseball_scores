@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【管理者用】一球スコアラー v2</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin: 0; padding: 10px; background-color: #1a1a1a; color: white; }
+        .box { background: #222; border: 2px solid #444; border-radius: 10px; padding: 20px; max-width: 500px; margin: 20px auto; }
+        .input-group { margin: 15px 0; text-align: left; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; font-size: 16px; background: #333; color: white; border: 1px solid #555; border-radius: 5px; }
+        .btn { width: 100%; padding: 14px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        .btn-login { background: #4caf50; color: white; }
+        
+        #score-interface { display: none; }
+        .count-row { font-size: 32px; font-weight: bold; font-family: monospace; text-align: left; width: 180px; margin: 10px auto; letter-spacing: 5px; }
+        .yellow { color: #ffd700; } .blue { color: #1e90ff; } .red { color: #ff4500; }
+        
+        /* 操作グリッド */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 400px; margin: 15px auto; }
+        .btn-action { height: 75px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 10px; cursor: pointer; }
+        .btn-s { background: #ffd700; color: black; }
+        .btn-b { background: #1e90ff; }
+        .btn-h { background: #4caf50; grid-column: span 2; height: 50px; font-size: 16px; }
+        .btn-o { background: #ff4500; grid-column: span 2; height: 50px; font-size: 16px; }
+        
+        /* ランナー個別進塁セクション */
+        .runner-section { background: #2a2a2a; padding: 10px; border-radius: 8px; margin: 15px 0; border: 1px dashed #555; }
+        .runner-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .btn-runner { height: 45px; font-size: 13px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        
+        .btn-utility { background: #444; grid-column: span 2; height: 45px; font-size: 14px; }
+        textarea { width: 100%; height: 80px; background: #000; color: #a0ff00; font-family: monospace; padding: 10px; box-sizing: border-box; border-radius: 5px; margin-top: 10px; resize: none; }
+    </style>
+</head>
+<body>
+
+    <div id="login-interface" class="box">
+        <h2>団体専用・スコア入力ログイン</h2>
+        <div class="input-group">
+            <label>団体名（チーム名）</label>
+            <input type="text" id="team-name" value="タイガース">
+        </div>
+        <div class="input-group">
+            <label>パスワード</label>
+            <input type="password" id="password" value="tiger123">
+        </div>
+        <button class="btn btn-login" onclick="login()">認証してスコア入力へ</button>
+    </div>
+
+    <div id="score-interface" class="box">
+        <h2 id="display-team">担当チーム: --</h2>
+        <h3 id="display-inning">1回表の攻撃</h3>
+        
+        <div class="count-row">B: <span id="b-dots" class="blue">○○○</span></div>
+        <div class="count-row">S: <span id="s-dots" class="yellow">○○</span></div>
+        <div class="count-row">O: <span id="o-dots" class="red">○○</span></div>
+
+        <div class="grid">
+            <button class="btn-action btn-b" onclick="pitch('B')">ボール</button>
+            <button class="btn-action btn-s" onclick="pitch('S')">ストライク</button>
+            <button class="btn-action btn-h" onclick="result('安打')">安打 (ヒット)</button>
+            <button class="btn-action btn-o" onclick="result('凡打')">凡打・アウト</button>
+        </div>
+
+        <div class="runner-section">
+            <span style="font-size: 14px; font-weight: bold; color: #ccc;">ランナー単独進塁（盗塁・暴投など）</span>
+            <div class="runner-grid">
+                <button class="btn-runner" onclick="advanceRunner('一塁→二塁')">一塁→二塁</button>
+                <button class="btn-runner" onclick="advanceRunner('二塁→三塁')">二塁→三塁</button>
+                <button class="btn-runner" onclick="advanceRunner('三塁→生還')">三塁→生還</button>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top:0;">
+            <button class="btn-action btn-utility" onclick="undo()">1球・1行動戻す(Undo)</button>
+        </div>
+
+        <h3>【閲覧用データ転送コード】</h3>
+        <p style="font-size:12px; color:#aaa; margin:0 0 5px 0;">下の短いコードをコピーして、閲覧画面に貼り付けてください。</p>
+        <textarea id="output-json" readonly></textarea>
+    </div>
+
+    <script>
+        const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
+        
+        let currentTeam = "";
+        // 欠点②・③を解決：極限まで軽量化した「行動履歴」の配列構造
+        let state = { inning: 1, balls: 0, strikes: 0, outs: 0, history: [] };
+        let undoStack = [];
+
+        if (sessionStorage.getItem("is_auth") === "true") {
+            currentTeam = sessionStorage.getItem("auth_team");
+            showScorePage();
+        }
+
+        function login() {
+            const team = document.getElementById("team-name").value;
+            const pass = document.getElementById("password").value;
+            if (authDatabase[team] === pass) {
+                currentTeam = team;
+                sessionStorage.setItem("is_auth", "true");
+                sessionStorage.setItem("auth_team", team);
+                showScorePage();
+            } else {
+                alert("団体名またはパスワードが違います。");
+            }
+        }
+
+        function showScorePage() {
+            document.getElementById("login-interface").style.display = "none";
+            document.getElementById("score-interface").style.display = "block";
+            document.getElementById("display-team").innerText = "担当チーム: " + currentTeam;
+            updateUI();
+        }
+
+        function saveState() {
+            undoStack.push(JSON.stringify(state));
+        }
+
+        function pitch(type) {
+            saveState();
+            if (type === 'B') {
+                state.balls++;
+                if (state.balls === 4) { state.history.push([state.inning, "四球"]); resetAtBat(); }
+            } else if (type === 'S') {
+                state.strikes++;
+                if (state.strikes === 3) { state.history.push([state.inning, "三振"]); state.outs++; resetAtBat(); }
+            }
+            checkInning();
+            updateUI();
+        }
+
+        function result(actionType) {
+            saveState();
+            state.history.push([state.inning, actionType]);
+            if (actionType === '凡打') { state.outs++; }
+            resetAtBat();
+            checkInning();
+            updateUI();
+        }
+
+        // 単独進塁イベントの記録
+        function advanceRunner(moveType) {
+            saveState();
+            state.history.push([state.inning, moveType]);
+            updateUI();
+        }
+
+        function resetAtBat() { state.balls = 0; state.strikes = 0; }
+        
+        function checkInning() {
+            if (state.outs === 3) { alert("3アウト・チェンジ"); state.outs = 0; resetAtBat(); state.inning++; }
+        }
+
+        function undo() {
+            if (undoStack.length > 0) { state = JSON.parse(undoStack.pop()); updateUI(); }
+            else { alert("これ以上戻せません"); }
+        }
+
+        function updateUI() {
+            document.getElementById("display-inning").innerText = state.inning + "回表の攻撃";
+            document.getElementById("b-dots").innerText = "●".repeat(state.balls) + "○".repeat(3 - state.balls);
+            document.getElementById("s-dots").innerText = "●".repeat(state.strikes) + "○".repeat(2 - state.strikes);
+            document.getElementById("o-dots").innerText = "●".repeat(state.outs) + "○".repeat(2 - state.outs);
+            
+            // データを軽量な配列としてJSON文字列化
+            document.getElementById("output-json").value = JSON.stringify(state.history);
+        }
+    </script>
+</body>
+</html>

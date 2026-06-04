@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【公式速報】リアルタイム・野球スコアブック閲覧</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin: 0; padding: 10px; background-color: #121212; color: #e0e0e0; }
+        .box { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 15px; max-width: 500px; margin: 15px auto; }
+        
+        /* デジタル・スコアブック・マトリクス */
+        .scorebook-cell { width: 110px; height: 110px; border: 2px solid #555; margin: 15px auto; position: relative; background: #fff; color: #000; }
+        .diamond-path { position: absolute; width: 40px; height: 40px; border: 1px solid #ccc; top: 33px; left: 33px; transform: rotate(45deg); }
+        .base { position: absolute; width: 12px; height: 12px; background: #ccc; transition: background 0.3s; }
+        .b1 { right: -6px; top: 14px; }
+        .b2 { left: 14px; top: -6px; }
+        .b3 { left: -6px; top: 14px; }
+        .cell-text { position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 14px; font-weight: bold; }
+        .active-base { background: #4caf50 !important; border-radius: 2px; }
+        
+        textarea { width: 100%; height: 60px; background: #222; color: #fff; border: 1px solid #444; padding: 8px; box-sizing: border-box; border-radius: 4px; resize: none; }
+        .btn-load { width: 100%; padding: 10px; background: #2196f3; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        
+        /* 履歴リストのデザイン */
+        .log-container { text-align: left; background: #000; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; max-height: 180px; overflow-y: auto; color: #a0ff00; border: 1px solid #222; }
+        .log-item { border-bottom: 1px solid #111; padding: 4px 0; }
+    </style>
+</head>
+<body>
+
+    <h1>ベースボールスコア速報 (閲覧用)</h1>
+
+    <div class="box">
+        <h3>【スコアデータの更新】</h3>
+        <p style="font-size:12px; color:#aaa; margin:0 0 5px 0;">管理者から送られてきたコードを貼り付けて更新してください。</p>
+        <textarea id="input-json" placeholder="ここにコードを貼り付けます"></textarea>
+        <button class="btn-load" onclick="loadData()">データを反映する</button>
+    </div>
+
+    <div class="box">
+        <h3>② 最新のランナー・打席状況</h3>
+        <div class="scorebook-cell">
+            <div class="diamond-path">
+                <div id="base1" class="base b1"></div>
+                <div id="base2" class="base b2"></div>
+                <div id="base3" class="base b3"></div>
+            </div>
+            <div class="cell-text" id="cell-result">試合前</div>
+        </div>
+        <p style="font-size:11px; color:#aaa; margin:0;">※最後の行動（打席結果や単独進塁）に基づき描画されます</p>
+    </div>
+
+    <div class="box">
+        <h3>① 試合の全行動ログ一覧</h3>
+        <div id="log-list" class="log-container">データを読み込んでください。</div>
+    </div>
+
+    <script>
+        function loadData() {
+            try {
+                const jsonText = document.getElementById("input-json").value;
+                if(!jsonText.trim()) { alert("コードが入力されていません"); return; }
+                
+                // 軽量圧縮された配列を復元
+                const history = JSON.parse(jsonText);
+                
+                // 表示の初期リセット
+                document.getElementById("base1").className = "base b1";
+                document.getElementById("base2").className = "base b2";
+                document.getElementById("base3").className = "base b3";
+                document.getElementById("cell-result").innerText = "進行中";
+                document.getElementById("cell-result").style.color = "#000";
+
+                if (history.length === 0) {
+                    document.getElementById("log-list").innerText = "打席・進塁の記録はまだありません。";
+                    return;
+                }
+
+                // 1. 【ログ一覧】の動的生成
+                let logHTML = "";
+                history.forEach((action, index) => {
+                    const inning = action[0];
+                    const type = action[1];
+                    logHTML += `<div class="log-item">▶ [${inning}回表] 行動.${index + 1}: ${type}</div>`;
+                });
+                document.getElementById("log-list").innerHTML = logHTML;
+
+                // 2. 【スコアブックのマス目】に最新状態をマルチ展開
+                const lastAction = history[history.length - 1];
+                const lastType = lastAction[1];
+
+                // 打席結果および単独進塁の条件分岐
+                if (lastType === "安打") {
+                    document.getElementById("base1").className = "base b1 active-base";
+                    document.getElementById("cell-result").innerText = "単打 (H)";
+                    document.getElementById("cell-result").style.color = "green";
+                } else if (lastType === "四球") {
+                    document.getElementById("base1").className = "base b1 active-base";
+                    document.getElementById("cell-result").innerText = "四球 (BB)";
+                    document.getElementById("cell-result").style.color = "blue";
+                } else if (lastType === "三振") {
+                    document.getElementById("cell-result").innerText = "三振 (K)";
+                    document.getElementById("cell-result").style.color = "red";
+                } else if (lastType === "凡打") {
+                    document.getElementById("cell-result").innerText = "アウト";
+                    document.getElementById("cell-result").style.color = "red";
+                } else if (lastType === "一球戻す(Undo)") {
+                    document.getElementById("cell-result").innerText = "修正中";
+                } else {
+                    // 「一塁→二塁」などの単独進塁が送られてきた場合のマス目制御
+                    document.getElementById("cell-result").innerText = lastType;
+                    document.getElementById("cell-result").style.color = "#ffa500"; // オレンジ
+                    
+                    if (lastType === "一塁→二塁") { document.getElementById("base2").className = "base b2 active-base"; }
+                    if (lastType === "二塁→三塁") { document.getElementById("base3").className = "base b3 active-base"; }
+                    if (lastType === "三塁→生還") { document.getElementById("cell-result").innerText = "生還 (1得点)"; }
+                }
+
+                alert("最新のスコアデータを反映しました！");
+
+            } catch (e) {
+                alert("データの反映に失敗しました。コードが正しくコピーされているか確認してください。");
+            }
+        }
+    </script>
+</body>
+</html>
