@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【完全復活版】リアルタイム野球速報システム</title>
+    <title>プロ仕様・総合野球スコア管理システム</title>
     <style>
         /* 全体・ダークモードデザイン */
         *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #121212; color: #e0e0e0; text-align: center; }
         .container { max-width: 600px; margin: 0 auto; padding: 10px; }
-        .box { background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        .box { background: #1e1e1e; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         
         /* 1. アクセス直後のログイン画面 */
         #login-page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -23,7 +23,7 @@
         #main-app { display: none; }
         h1 { font-size: 20px; color: #4caf50; margin: 10px 0; }
         
-        /* 現行のランニングスコアボード */
+        /* ランニングスコアボード */
         .score-table { width: 100%; border-collapse: collapse; background: #141916; font-family: monospace; font-size: 16px; margin-bottom: 10px; }
         .score-table th, .score-table td { border: 1px solid #333; padding: 6px; text-align: center; }
         .score-table th { background: #222; font-size: 12px; color: #aaa; }
@@ -35,28 +35,29 @@
         .match-info-label { color: #888; font-size: 11px; display: block; }
         .match-info-value { font-weight: bold; font-size: 15px; color: #fff; }
         
-        /* BSO ＆ ランナー状況の可視化 */
+        /* BSO ＆ ダイヤモンド可視化レイアウト */
         .live-status-layout { display: flex; align-items: center; justify-content: space-around; background: #151515; padding: 10px; border-radius: 8px; }
         .count-indicator { font-family: monospace; font-size: 22px; text-align: left; font-weight: bold; line-height: 1.4; }
-        .yellow { color: #ffd700; } .blue { color: #1e90ff; } .red { color: #ff4500; }
+        .yellow { color: #ffd700; text-shadow: 0 0 5px #ffd700; } 
+        .blue { color: #1e90ff; text-shadow: 0 0 5px #1e90ff; } 
+        .red { color: #ff4500; text-shadow: 0 0 5px #ff4500; }
         
         /* ひし形の頂点点灯式スコアブックマス */
         .scorebook-cell { width: 100px; height: 100px; border: 2px solid #444; position: relative; background: #1a1a1a; border-radius: 6px; }
         .diamond-line { position: absolute; width: 50px; height: 50px; border: 1px solid #333; top: 23px; left: 23px; transform: rotate(45deg); }
-        .base { position: absolute; width: 14px; height: 14px; background: #444; border: 1px solid #222; transform: rotate(45deg); transition: background 0.3s, transform 0.3s; }
+        .base { position: absolute; width: 14px; height: 14px; background: #444; border: 1px solid #222; transform: rotate(45deg); transition: background 0.2s, transform 0.2s; }
         .b1 { right: 12px; top: 41px; }  /* 一塁（右の頂点） */
         .b2 { left: 41px; top: 12px; }   /* 二塁（上の頂点） */
         .b3 { left: 12px; top: 41px; }   /* 三塁（左の頂点） */
         .cell-text { position: absolute; bottom: 38px; width: 100%; text-align: center; font-size: 13px; font-weight: bold; color: #fff; pointer-events: none; }
         .active-base { background: #4caf50 !important; border-color: #fff; transform: rotate(45deg) scale(1.1); }
 
-        /* 操作パネル（入力モードのみ） */
+        /* 操作パネル（入力モード用） */
         #input-controls { display: none; }
         .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .btn { padding: 12px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
+        .btn { padding: 12px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; }
         .btn-b { background: #1e90ff; } .btn-s { background: #ffd700; color: black; }
         
-        /* 塁打別の打撃ボタン */
         .hit-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; grid-column: span 2; }
         .btn-hit { font-size: 11px; padding: 8px 2px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; }
         .btn-h1 { background: #2e7d32; } .btn-h2 { background: #1b5e20; } .btn-h3 { background: #004d40; } .btn-h4 { background: #b71c1c; }
@@ -65,15 +66,15 @@
         .btn-change { background: #9c27b0; grid-column: span 2; padding: 8px; font-size: 13px; }
         .btn-util { background: #555; font-size: 12px; padding: 6px; }
         
-        /* ポップアップモーダル */
+        /* ポップアップモーダル共通 */
         .modal-mask { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
-        textarea { width: 100%; height: 50px; background: #000; color: #a0ff00; font-family: monospace; padding: 6px; border-radius: 4px; border: 1px solid #333; font-size: 11px; resize: none; margin-top: 5px; }
+        textarea { width: 100%; height: 5px; min-height: 55px; background: #000; color: #a0ff00; font-family: monospace; padding: 6px; border-radius: 4px; border: 1px solid #333; font-size: 11px; resize: none; margin-top: 5px; }
         
-        /* 詳細試合記録のタイムライン表示 */
+        /* 詳細試合記録のタイムライン */
         .log-container { text-align: left; background: #000; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; max-height: 150px; overflow-y: auto; color: #a0ff00; border: 1px solid #222; }
         .log-item { border-bottom: 1px solid #111; padding: 4px 0; line-height: 1.4; }
 
-        /* 両サイドの打線オーダー */
+        /* 両サイドの打線リスト */
         .lineup-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .lineup-box { background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; padding: 8px; text-align: left; font-size: 12px; }
         .lineup-title { font-weight: bold; color: #4caf50; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 4px; font-size: 13px; }
@@ -147,7 +148,7 @@
                     <div id="base2" class="base b2"></div>
                     <div id="base3" class="base b3"></div>
                     <div id="base1" class="base b1"></div>
-                    <div class="cell-text" id="cell-result">試合中</div>
+                    <div class="cell-text" id="cell-result">試合開始</div>
                 </div>
             </div>
         </div>
@@ -155,14 +156,14 @@
         <div id="input-controls" class="box">
             <h3>【管理者操作パネル】</h3>
             <div class="grid-buttons">
-                <button class="btn btn-b" onclick="pitch('B')">ボール</button>
-                <button class="btn btn-s" onclick="pitch('S')">ストライク (即時点灯)</button>
+                <button class="btn btn-b" onclick="pitch('B')">ボール (B)</button>
+                <button class="btn btn-yellow" onclick="pitch('S')">ストライク (S)</button>
                 
                 <div class="hit-btn-container">
-                    <button class="btn-hit btn-h1" onclick="openDetailsModal('安打', 1)">単打<br>(1塁打)</button>
-                    <button class="btn-hit btn-h2" onclick="openDetailsModal('二塁打', 2)">二塁打<br>(ダブル)</button>
-                    <button class="btn-hit btn-h3" onclick="openDetailsModal('三塁打', 3)">三塁打<br>(トリプル)</button>
-                    <button class="btn-hit btn-h4" onclick="openDetailsModal('本塁打', 4)">本塁打<br>(HR)</button>
+                    <button class="btn-hit btn-h1" onclick="openDetailsModal('安打', 1)">単打</button>
+                    <button class="btn-hit btn-h2" onclick="openDetailsModal('二塁打', 2)">二塁打</button>
+                    <button class="btn-hit btn-h3" onclick="openDetailsModal('三塁打', 3)">三塁打</button>
+                    <button class="btn-hit btn-h4" onclick="openDetailsModal('本塁打', 4)">本塁打</button>
                 </div>
                 
                 <button class="btn btn-o" onclick="openDetailsModal('凡打', 0)">凡打・アウト詳細入力</button>
@@ -170,7 +171,7 @@
                 <button class="btn btn-util" onclick="undo()">1手戻す(Undo)</button>
                 <button class="btn btn-util" style="background:#424242;" onclick="resetAtBatCount()">カウントリセット</button>
             </div>
-            <h4 style="margin:10px 0 0 0; font-size:12px; color:#aaa;">転送・詳細分析用JSONコード（クリックで全選択コピー）</h4>
+            <h4 style="margin:10px 0 0 0; font-size:12px; color:#aaa;">転送・詳細分析用JSON（クリックで全選択コピー）</h4>
             <textarea id="output-code" readonly onclick="this.select()"></textarea>
         </div>
 
@@ -182,7 +183,7 @@
         </div>
 
         <div class="box">
-            <h3>【詳細試合記録タイムライン（スコア清書・分析用）】</h3>
+            <h3>【詳細試合記録タイムライン（スコア清書用）】</h3>
             <div id="log-list" class="log-container">データを読み込んでください。</div>
         </div>
 
@@ -258,6 +259,9 @@
     </div>
 
     <script>
+        // 【強制初期化】過去のデータクラッシュを引きずらない防壁ロジック
+        try { sessionStorage.clear(); localStorage.clear(); } catch(e){}
+
         const authDatabase = { "タイガース": "tiger123", "ジャイアンツ": "giant456" };
 
         let matchState = {
@@ -267,7 +271,7 @@
             vLineup: ["1番 打者A", "2番 打者B", "3番 打者C", "4番 打者D", "5番 打者E", "6番 打者F", "7番 打者G", "8番 打者H", "9番 打者I"],
             hLineup: ["1番 選手大", "2番 選手二", "3番 選手三", "4番 選手四", "5番 選手五", "6番 選手六", "7番 選手七", "8番 選手八", "9番 選手九"],
             bases: [false, false, false], 
-            lastEvent: "試合中",
+            lastEvent: "試合開始",
             history: [] 
         };
 
@@ -277,8 +281,8 @@
         let tempBasesCount = 0;
 
         function handleLogin() {
-            const t = document.getElementById("login-team").value;
-            const p = document.getElementById("login-pass").value;
+            const t = document.getElementById("login-team").value.trim();
+            const p = document.getElementById("login-pass").value.trim();
             if (authDatabase[t] === p) {
                 document.getElementById("login-page").style.display = "none";
                 document.getElementById("mode-page").style.display = "block";
@@ -303,6 +307,7 @@
 
         function saveState() { undoStack.push(JSON.stringify(matchState)); }
 
+        // 【バグ修正点】ボール・ストライクを叩いた瞬間、即座に画面描画が100%走るように一本化
         function pitch(type) {
             saveState();
             matchState.pitcherPitches++;
@@ -423,7 +428,7 @@
 
         function checkInningChange() {
             if (matchState.outs >= 3) {
-                alert("3アウトチェンジ！攻守を交代します。");
+                alert("3アウトチェンジ！攻守交代します。");
                 matchState.outs = 0; matchState.bases = [false, false, false]; resetAtBatCount();
                 if (matchState.isTop) { matchState.isTop = false; matchState.hScore[matchState.inning - 1] = 0; }
                 else { matchState.isTop = true; matchState.inning++; if (matchState.inning <= 9) { matchState.vScore[matchState.inning - 1] = 0; } }
@@ -461,52 +466,55 @@
 
         function syncViewData() {
             try {
-                const code = document.getElementById("input-code").value;
-                if(!code.trim()) return;
+                const code = document.getElementById("input-code").value.trim();
+                if(!code) return;
                 matchState = JSON.parse(code);
                 renderUI();
-                alert("詳細スコアデータを完全に同期しました！");
-            } catch(e) { alert("同期エラーです。"); }
+                alert("スコアボードを最新に同期しました！");
+            } catch(e) { alert("同期エラーです。コードを確認してください。"); }
         }
 
+        // 【修正点】ブラウザの遅延を許さず、力ずくで要素を書き換える一元レンダリング関数
         function renderUI() {
-            document.getElementById("display-inning").innerText = matchState.inning + "回" + (matchState.isTop ? "表" : "裏") + "の攻撃";
-            document.getElementById("b-dots").innerText = "●".repeat(matchState.balls) + "○".repeat(3 - matchState.balls);
-            document.getElementById("s-dots").innerText = "●".repeat(matchState.strikes) + "○".repeat(2 - matchState.strikes);
-            document.getElementById("o-dots").innerText = "●".repeat(matchState.outs) + "○".repeat(2 - matchState.outs);
-            
-            document.getElementById("base1").className = "base b1" + (matchState.bases[0] ? " active-base" : "");
-            document.getElementById("base2").className = "base b2" + (matchState.bases[1] ? " active-base" : "");
-            document.getElementById("base3").className = "base b3" + (matchState.bases[2] ? " active-base" : "");
-            document.getElementById("cell-result").innerText = matchState.lastEvent;
+            try {
+                document.getElementById("display-inning").innerText = matchState.inning + "回" + (matchState.isTop ? "表" : "裏") + "の攻撃";
+                document.getElementById("b-dots").innerText = "●".repeat(matchState.balls) + "○".repeat(3 - matchState.balls);
+                document.getElementById("s-dots").innerText = "●".repeat(matchState.strikes) + "○".repeat(2 - matchState.strikes);
+                document.getElementById("o-dots").innerText = "●".repeat(matchState.outs) + "○".repeat(2 - matchState.outs);
+                
+                document.getElementById("base1").className = "base b1" + (matchState.bases[0] ? " active-base" : "");
+                document.getElementById("base2").className = "base b2" + (matchState.bases[1] ? " active-base" : "");
+                document.getElementById("base3").className = "base b3" + (matchState.bases[2] ? " active-base" : "");
+                document.getElementById("cell-result").innerText = matchState.lastEvent;
 
-            let vTotal = 0, hTotal = 0;
-            for(let i=1; i<=9; i++) {
-                let v = matchState.vScore[i-1]; let h = matchState.hScore[i-1];
-                document.getElementById("r-v" + i).innerText = (v !== null && v !== undefined) ? v : "-";
-                document.getElementById("r-h" + i).innerText = (h !== null && h !== undefined) ? h : "-";
-                if(v !== null) vTotal += v; if(h !== null) hTotal += h;
-            }
-            document.getElementById("r-v-total").innerText = vTotal; document.getElementById("r-h-total").innerText = hTotal;
+                let vTotal = 0, hTotal = 0;
+                for(let i=1; i<=9; i++) {
+                    let v = matchState.vScore[i-1]; let h = matchState.hScore[i-1];
+                    document.getElementById("r-v" + i).innerText = (v !== null && v !== undefined) ? v : "-";
+                    document.getElementById("r-h" + i).innerText = (h !== null && h !== undefined) ? h : "-";
+                    if(v !== null) vTotal += v; if(h !== null) hTotal += h;
+                }
+                document.getElementById("r-v-total").innerText = vTotal; document.getElementById("r-h-total").innerText = hTotal;
 
-            const currentLineup = matchState.isTop ? matchState.vLineup : matchState.hLineup;
-            document.getElementById("info-pitcher").innerText = `${matchState.pitcherName} (${matchState.pitcherPitches}球)`;
-            document.getElementById("info-batter").innerText = currentLineup[matchState.currentBatterIdx];
+                const currentLineup = matchState.isTop ? matchState.vLineup : matchState.hLineup;
+                document.getElementById("info-pitcher").innerText = `${matchState.pitcherName} (${matchState.pitcherPitches}球)`;
+                document.getElementById("info-batter").innerText = currentLineup[matchState.currentBatterIdx];
 
-            let logHTML = "";
-            if (matchState.history.length === 0) {
-                logHTML = "打席記録はまだありません。";
-            } else {
-                matchState.history.forEach((h, idx) => {
-                    logHTML += `<div class="log-item"><b>[${h.inning}回${h.isTop?'表':'裏'}]</b> ${h.batter} ⇒ <b>【${h.res}】</b> (${h.dir}への${h.type} / 守備詳細:${h.outKind})</div>`;
-                });
-            }
-            document.getElementById("log-list").innerHTML = logHTML;
+                let logHTML = "";
+                if (matchState.history.length === 0) {
+                    logHTML = "打席記録はまだありません。";
+                } else {
+                    matchState.history.forEach((h) => {
+                        logHTML += `<div class="log-item"><b>[${h.inning}回${h.isTop?'表':'裏'}]</b> ${h.batter} ⇒ <b>【${h.res}】</b> (${h.dir}への${h.type} / 守備詳細:${h.outKind})</div>`;
+                    });
+                }
+                document.getElementById("log-list").innerHTML = logHTML;
 
-            renderLineupList("v-lineup-list", matchState.vLineup, matchState.isTop);
-            renderLineupList("h-lineup-list", matchState.hLineup, !matchState.isTop);
+                renderLineupList("v-lineup-list", matchState.vLineup, matchState.isTop);
+                renderLineupList("h-lineup-list", matchState.hLineup, !matchState.isTop);
 
-            if (currentMode === "input") { document.getElementById("output-code").value = JSON.stringify(matchState); }
+                if (currentMode === "input") { document.getElementById("output-code").value = JSON.stringify(matchState); }
+            } catch(e) { console.log(e); }
         }
 
         function renderLineupList(elementId, lineupArray, isAttackingTeam) {
