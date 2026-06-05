@@ -30,7 +30,7 @@
         .score-cell-clickable { cursor: pointer; background: #1c2621; transition: background 0.2s; }
         .score-cell-clickable:hover { background: #2e7d32; }
         
-        /* 对战情報 */
+        /* 対戦情報 */
         .match-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; background: #252525; padding: 6px; border-radius: 6px; margin-bottom: 8px; }
         .match-info-item { text-align: left; }
         .match-info-label { color: #888; font-size: 10px; display: block; }
@@ -51,7 +51,7 @@
         .active-base { background: #4caf50 !important; border-color: #fff; transform: rotate(45deg) scale(1.1); }
 
         /* 操作パネルの超高密度プロ仕様レイアウト */
-        #input-controls { display: none; }
+        #input-controls { display: none; } /* 初期状態は非表示（JSで解除します） */
         .grid-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
         
         .pitch-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
@@ -164,13 +164,13 @@
             </table>
         </div>
 
-        <!-- 対戦インフォメーション -->
+        <!-- 对战インフォメーション -->
         <div class="match-info-grid">
             <div class="match-info-item"><span class="match-info-label">投手（守備球数）</span><span class="match-info-value" id="info-pitcher">-- (0球)</span></div>
             <div class="match-info-item"><span class="match-info-label">現在の下席（打順）</span><span class="match-info-value" id="info-batter">-- (1番)</span></div>
         </div>
 
-        <!-- BSO ＆ ダイヤモンド -->
+        <!-- BSO ＆ ダイヤモンド可視化レイアウト -->
         <div class="box" style="padding:6px;">
             <div class="live-status-layout">
                 <div class="count-indicator">
@@ -188,7 +188,7 @@
             </div>
         </div>
 
-        <!-- 入力操作パネル（1文字の漏れもなく全機能をここに大結合） -->
+        <!-- 入力操作パネル（1文字の漏れもなく全ボタンがここに大集結） -->
         <div id="input-controls" class="box">
             <h3 style="margin-top:0; color:#ffd700; font-size:14px;">【操作パネル】</h3>
             
@@ -254,7 +254,7 @@
             <div class="input-group"><label>試合識別名（管理一覧用）</label><input type="text" id="form-match-id" value="20260604_第一試合"></div>
             <div class="input-group"><label>先攻チーム名</label><input type="text" id="form-v-team-name" value="タイガース" onchange="updateFormLabels()"></div>
             <div class="input-group"><label>後攻チーム名</label><input type="text" id="form-h-team-name" value="ライオンズ" onchange="updateFormLabels()"></div>
-            <h4 style="color:#ffd700; margin:10px 0 5px 0; border-bottom:1px solid #555; text-align:left; font-size:13px;" id="form-v-label-title">先攻オーダー手動入力</h4><div id="form-v-players-inputs"></div>
+            <h4 style="color:#ffd700; margin:15px 0 5px 0; border-bottom:1px solid #555; text-align:left; font-size:13px;" id="form-v-label-title">先攻オーダー手動入力</h4><div id="form-v-players-inputs"></div>
             <h4 style="color:#ffd700; margin:15px 0 5px 0; border-bottom:1px solid #555; text-align:left; font-size:13px;" id="form-h-label-title">後攻オーダー手動入力</h4><div id="form-h-players-inputs"></div>
             <div class="grid-buttons" style="margin-top:15px;"><button class="btn btn-h1" style="background:#2e7d32;" onclick="commitNewMatch()">このオーダーで試合を作成</button><button class="btn btn-util" onclick="closeNewMatchModal()">キャンセル</button></div>
         </div>
@@ -334,9 +334,14 @@
             } else { alert("団体名またはパスワードが違います。"); }
         }
 
+        // ★【大元バグ完全粉砕】：ログイン成功➔起動時、CSSの非表示ロックを物理的に解除する直結コードを再展開！
         function startApp() {
             document.getElementById("mode-page").style.display = "none"; 
             document.getElementById("main-app").style.display = "block";
+            
+            // ★【核心修正】：透明化されていた #input-controls パネルをこの瞬間100%確実に画面上へ強制射出させる
+            document.getElementById("input-controls").style.display = "block";
+            
             buildOrderFormInputs();
             renderUI();
         }
