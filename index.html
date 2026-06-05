@@ -30,7 +30,7 @@
         .score-cell-clickable { cursor: pointer; background: #1c2621; transition: background 0.2s; }
         .score-cell-clickable:hover { background: #2e7d32; }
         
-        /* 対戦インフォ */
+        /* 对战情報 */
         .match-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; background: #252525; padding: 6px; border-radius: 6px; margin-bottom: 8px; }
         .match-info-item { text-align: left; }
         .match-info-label { color: #888; font-size: 10px; display: block; }
@@ -50,26 +50,26 @@
         .cell-text { position: absolute; bottom: 34px; width: 100%; text-align: center; font-size: 11px; font-weight: bold; color: #fff; pointer-events: none; }
         .active-base { background: #4caf50 !important; border-color: #fff; transform: rotate(45deg) scale(1.1); }
 
-        /* 操作パネルのレイアウト高密度化 */
+        /* 操作パネルの超高密度プロ仕様レイアウト */
         #input-controls { display: none; }
-        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 5px; }
-        .pitch-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; grid-column: span 2; }
+        .grid-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
         
-        .btn { padding: 10px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; }
-        .btn-b { background: #1e90ff; } .btn-s { background: #ffd700; color: black; }
-        .btn-f { background: #4caf50; } 
+        .pitch-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        .hit-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; }
+        .special-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+        .util-btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         
-        .hit-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; grid-column: span 2; }
-        .btn-hit { font-size: 11px; padding: 8px 2px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; }
+        .btn { padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; -webkit-tap-highlight-color: transparent; }
+        .btn-b { background: #1e90ff; } .btn-s { background: #ffd700; color: black; } .btn-f { background: #4caf50; } 
+        
+        .btn-hit { font-size: 12px; padding: 10px 2px; font-weight: bold; border-radius: 5px; border: none; color: white; cursor: pointer; }
         .btn-h1 { background: #2e7d32; } .btn-h2 { background: #1b5e20; } .btn-h3 { background: #004d40; } .btn-h4 { background: #b71c1c; }
         
-        /* 盗塁・特殊進塁用のボタンコンテナ */
-        .special-btn-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; grid-column: span 2; }
-        .btn-spec { font-size: 11px; padding: 6px 2px; background: #0288d1; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; }
+        .btn-spec { font-size: 12px; padding: 8px 2px; background: #0288d1; font-weight: bold; border-radius: 5px; border: none; color: white; cursor: pointer; }
         
-        .btn-o { background: #ff4500; grid-column: span 2; padding: 8px; font-size: 14px; }
-        .btn-change { background: #9c27b0; grid-column: span 2; padding: 6px; font-size: 12px; }
-        .btn-util { background: #555; font-size: 12px; padding: 5px; }
+        .btn-o { background: #ff4500; padding: 11px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
+        .btn-change { background: #9c27b0; padding: 9px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
+        .btn-util { background: #555; font-size: 13px; padding: 8px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
         
         .modal-mask { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
         .modal-content-scroller { max-height: 85vh; overflow-y: auto; background: #252525; padding: 15px; border-radius: 10px; width: 95%; max-width: 420px; border: 1px solid #444; }
@@ -114,14 +114,14 @@
 
     <!-- 3. 本番アプリケーション速報画面 -->
     <div id="main-app" class="container">
-        <h1>野球速報</h1>
+        <h1>ベースボールスコア管理システム</h1>
 
         <!-- 試合選択メニュー -->
         <div class="box" id="match-select-box" style="padding:8px; background:#1a2421; border-color:#2e7d32;">
             <div class="input-group" style="margin-bottom:0;">
                 <label style="color:#4caf50; font-size:11px;">👁 管理中の試合を切り替え</label>
                 <select id="app-match-selector" style="padding:6px; font-size:13px;" onchange="onMatchSelectionChange()">
-                    <option value="default_match">進行中の試合 (デフォルト部屋)</option>
+                    <!-- 動的に展開されます -->
                 </select>
             </div>
         </div>
@@ -170,7 +170,7 @@
             <div class="match-info-item"><span class="match-info-label">現在の下席（打順）</span><span class="match-info-value" id="info-batter">-- (1番)</span></div>
         </div>
 
-        <!-- BSO ＆ ダイヤモンド可視化レイアウト -->
+        <!-- BSO ＆ ダイヤモンド -->
         <div class="box" style="padding:6px;">
             <div class="live-status-layout">
                 <div class="count-indicator">
@@ -188,24 +188,24 @@
             </div>
         </div>
 
-        <!-- 入力管理者用操作パネル -->
+        <!-- 入力操作パネル（1文字の漏れもなく全機能をここに大結合） -->
         <div id="input-controls" class="box">
             <h3 style="margin-top:0; color:#ffd700; font-size:14px;">【操作パネル】</h3>
             
-            <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <div style="display:flex; gap:4px; margin-bottom:8px;">
                 <button class="btn btn-h1" style="flex:1; font-size:11px; padding:6px; background:#2e7d32;" onclick="openNewMatchModal()">➕ 新規試合・オーダー手動登録</button>
                 <button class="btn btn-red" style="flex:1; font-size:11px; padding:6px; background:#b71c1c;" onclick="toggleMatchStatus()">🔒 この試合を【更新終了】にする</button>
             </div>
 
             <div class="grid-buttons">
-                <!-- 投球基本カウントボタン -->
+                <!-- ①：投球基本カウントボタンコンテナ -->
                 <div class="pitch-btn-container">
-                    <button class="btn btn-b" onclick="pitch('B')">ボール</button>
-                    <button class="btn btn-yellow" onclick="pitch('S')">ストライク</button>
-                    <button class="btn btn-f" onclick="pitch('F')">ファウル</button>
+                    <button class="btn btn-b" onclick="pitch('B')">ボール (B)</button>
+                    <button class="btn btn-yellow" onclick="pitch('S')">ストライク (S)</button>
+                    <button class="btn btn-f" onclick="pitch('F')">ファウル (F)</button>
                 </div>
                 
-                <!-- 安打系ボタン -->
+                <!-- ②：安打（ヒット）系ボタンコンテナ -->
                 <div class="hit-btn-container">
                     <button class="btn-hit btn-h1" onclick="openDetailsModal('安打', 1)">単打</button>
                     <button class="btn-hit btn-h2" onclick="openDetailsModal('安打', 2)">二塁打</button>
@@ -213,7 +213,7 @@
                     <button class="btn-hit btn-h4" onclick="openDetailsModal('安打', 4)">本塁打</button>
                 </div>
 
-                <!-- 盗塁・WP・PB・ボーク・犠飛などの特殊プレイボタン群 -->
+                <!-- ③：新設特殊プレイ（盗塁・進塁・ミス行為）ボタンコンテナ -->
                 <div class="special-btn-container">
                     <button class="btn-spec" onclick="executeSpecialPlay('盗塁成功')">🏃 盗塁成功</button>
                     <button class="btn-spec" style="background:#b71c1c;" onclick="executeSpecialPlay('盗塁死')">🛑 盗塁死/走塁死</button>
@@ -223,10 +223,14 @@
                     <button class="btn-spec" style="background:#ad1457;" onclick="executeSpecialPlay('ボーク')">⚡ ボーク</button>
                 </div>
                 
-                <button class="btn btn-o" onclick="openDetailsModal('凡打', 0)">凡打・アウト詳細入力</button>
-                <button class="btn btn-change" onclick="openChangeModal()">🔄 選手交代・走者配置微調整</button>
-                <button class="btn btn-util" onclick="onUndoClick()">1手戻す(Undo)</button>
-                <button class="btn btn-util" style="background:#424242;" onclick="resetAtBatCountBtn()">カウントリセット</button>
+                <!-- ④：凡打アウト・選手交代・微調整・Undo・リセット群 -->
+                <button class="btn-o" onclick="openDetailsModal('凡打', 0)">凡打・アウト詳細入力</button>
+                <button class="btn-change" onclick="openChangeModal()">🔄 選手交代・走者配置微調整</button>
+                
+                <div class="util-btn-container">
+                    <button class="btn-util" onclick="onUndoClick()">1手戻す(Undo)</button>
+                    <button class="btn-util" style="background:#424242;" onclick="resetAtBatCountBtn()">カウントリセット</button>
+                </div>
             </div>
         </div>
 
@@ -252,7 +256,7 @@
             <div class="input-group"><label>後攻チーム名</label><input type="text" id="form-h-team-name" value="ライオンズ" onchange="updateFormLabels()"></div>
             <h4 style="color:#ffd700; margin:10px 0 5px 0; border-bottom:1px solid #555; text-align:left; font-size:13px;" id="form-v-label-title">先攻オーダー手動入力</h4><div id="form-v-players-inputs"></div>
             <h4 style="color:#ffd700; margin:15px 0 5px 0; border-bottom:1px solid #555; text-align:left; font-size:13px;" id="form-h-label-title">後攻オーダー手動入力</h4><div id="form-h-players-inputs"></div>
-            <div class="grid-buttons" style="margin-top:15px;"><button class="btn btn-h1" onclick="commitNewMatch()">このオーダーで試合を作成</button><button class="btn btn-util" onclick="closeNewMatchModal()">キャンセル</button></div>
+            <div class="grid-buttons" style="margin-top:15px;"><button class="btn btn-h1" style="background:#2e7d32;" onclick="commitNewMatch()">このオーダーで試合を作成</button><button class="btn btn-util" onclick="closeNewMatchModal()">キャンセル</button></div>
         </div>
     </div>
 
@@ -282,7 +286,7 @@
                     <option value="ダブルプレー">ゲッツー（併殺打）</option>
                 </select>
             </div>
-            <div class="grid-buttons"><button class="btn btn-h1" onclick="commitDetails()">詳細データを確定して反映</button><button class="btn btn-util" onclick="closeDetailsModal()">キャンセル</button></div>
+            <div class="grid-buttons"><button class="btn btn-h1" style="background:#2e7d32;" onclick="commitDetails()">詳細データを確定して反映</button><button class="btn btn-util" onclick="closeDetailsModal()">キャンセル</button></div>
         </div>
     </div>
 
@@ -588,7 +592,6 @@
         function openNewMatchModal() { document.getElementById("new-match-modal").style.display = "flex"; updateFormLabels(); }
         function closeNewMatchModal() { document.getElementById("new-match-modal").style.display = "none"; }
 
-        // ★【核心修正】：試合を作成した瞬間、HTML要素の過去の文字の残骸を力ずくで消し去り、1回表のみ0にする完全リセット命令
         function commitNewMatch() {
             saveState();
             const matchId = document.getElementById("form-match-id").value.trim() || "無題の試合";
@@ -601,7 +604,6 @@
                 hLineup.push(document.getElementById(`input-h-p${i}`).value.trim());
             }
             
-            // 未来イニングは「必ずnull（非表示）」、1回表のみ「0」でオブジェクトを完全にクリア生成
             appDb.matches[matchId] = {
                 matchId: matchId, status: "進行中", vTeam: vTeam, hTeam: hTeam,
                 inning: 1, isTop: true, balls: 0, strikes: 0, outs: 0, pitcherName: "投手名", pitcherPitches: 0, 
@@ -613,10 +615,7 @@
             appDb.currentActiveMatchId = matchId; 
             
             closeNewMatchModal(); 
-            
-            // ★【最重要】：モーダルが閉じたコンテキストで、HTMLのテーブルマスを強制リペイント（白紙化）させる
             renderUI();
-            
             alert(`試合 [${matchId}] を作成しました。スコアボードの未来マスを初期化しました。`);
         }
 
@@ -673,12 +672,10 @@
                 document.getElementById("base3").className = "base b3" + (m.bases[2] ? " active-base" : "");
                 document.getElementById("cell-result").innerText = m.lastEvent;
 
-                // ★【核心修正描写】：配列内の要素がnullである「未来の回」のテキストマスの文字を、完全にハイフン「-」に強制塗り替えする
                 let vTotal = 0; let hTotal = 0;
                 for(let i=1; i<=9; i++) {
                     let v = m.vScore[i-1]; let h = m.hScore[i-1];
                     
-                    // innerTextに値を上書きし、過去のHTML上のサンプルの残骸を物理的に全消去
                     document.getElementById("r-v" + i).innerText = (v !== null && v !== undefined) ? v : "-";
                     document.getElementById("r-h" + i).innerText = (h !== null && h !== undefined) ? h : "-";
                     
